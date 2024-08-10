@@ -1,6 +1,6 @@
 {
     'name': "Ecommerce Odoo Integration",
-    'version': '1.1',
+    'version': '1.0',
     'summary': "Sync Customers, Sale Orders & Auto Generate Delivery Orders, Invoices and Payments.",
     'author': "~Areterix Technologies LLP",
     'website': "https://areterix.com",
