@@ -8,10 +8,10 @@ from odoo import models, fields, api
 from odoo.exceptions import UserError
 
 # Define the global URL
-API_URL = "https://stage-admin.applligentdemo.com/api/v1/odoo/"
+#API_URL = "https://stage-admin.applligentdemo.com/api/v1/odoo/"
 
 SECRETKEY = "sk_e2a2d95a-34d4-4c58-8adf-21d7822f13f0"
-#API_URL = "https://console.ashjar.sa/api/v1/odoo/"
+API_URL = "https://console.ashjar.sa/api/v1/odoo/"
 
 class ReturnPicking(models.Model):
     _name = 'return.picking'
@@ -442,11 +442,11 @@ class CustomerCreator(models.Model):
         # print('commitment_date', commitment_date)
         # print('sale_id', sale_id)
         # print('customer_data', customer_data)
-        salesperson_id = self.env['res.users'].search([('name', '=', 'Online Sales')], limit=1)
-        print('salesperson_id',salesperson_id)
-        print('salesperson_id',salesperson_id.id)
-        if not salesperson_id:
-            raise UserError("Salesperson 'Online Sales' not found")
+        # salesperson_id = self.env['res.users'].search([('name', '=', 'Online Sales')], limit=1)
+        # print('salesperson_id',salesperson_id)
+        # print('salesperson_id',salesperson_id.id)
+        # if not salesperson_id:
+        #     raise UserError("Salesperson 'Online Sales' not found")
 
         # Ensure existing_customer is set correctly
         existing_customer = self.env['res.partner'].search([('mobile', '=', customer_data["mobile"])], limit=1)
