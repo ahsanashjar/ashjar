@@ -1,4 +1,0 @@
-[submodule "ahsanashjar/ashjar-odoo-modules"]
-	path = ahsanashjar/ashjar-odoo-modules
-	url = git@github.com:ahsanashjar/ashjar-odoo-modules.git
-	branch = main
