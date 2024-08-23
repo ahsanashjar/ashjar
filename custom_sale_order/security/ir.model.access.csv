@@ -1,2 +1,0 @@
-name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
-customer_creator,custom_sale_order.model_customer_creator,base.group_user,1,1,1,0
