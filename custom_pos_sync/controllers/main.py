@@ -49,6 +49,7 @@ class RegisterCustomerData(http.Controller):
         partner_model = request.env['res.partner'].sudo()
         partner = partner_model.search([('id', '=', customer_id)], limit=1)
         loyalty_card = request.env['loyalty.card'].sudo().search([('partner_id', '=', customer_id)], limit=1)
+        leaf_points = loyalty_card.points if loyalty_card else 0
 
         # print('fetch partner id',partner)
         if customer_id and partner:
@@ -64,7 +65,9 @@ class RegisterCustomerData(http.Controller):
             partner = partner_model.search([('phone', '=', phone_number)], limit=1)
             # for existing users
             loyalty_card = request.env['loyalty.card'].sudo().search([('partner_id', '=', partner.id)], limit=1)
+
             if partner:
+                leaf_points = loyalty_card.points if loyalty_card else 0
                 return data.get('result',
                                 {'message': 'This Customer is Already Registered With This Phone Number.', 'customer': {
                                     'customer_id': partner.id,
@@ -73,7 +76,7 @@ class RegisterCustomerData(http.Controller):
                                     'phonecode': partner.phonecode,
                                     'date_of_birth': partner.dob,
                                     'gender': partner.gender,
-                                    'leaf_points': loyalty_card.points
+                                    'leaf_points': leaf_points
                                 }})
             partner_id = partner_model.create(
                 {'name': name, 'phone': phone_number, 'phonecode': phonecode, 'gender': gender, 'dob': dob})
@@ -86,9 +89,46 @@ class RegisterCustomerData(http.Controller):
                                 'phonecode': partner_id.phonecode,
                                 'date_of_birth': partner_id.dob,
                                 'gender': partner_id.gender,
-                                'leaf_points': loyalty_card.points
+                                'leaf_points': leaf_points
                             }})
 
+    @http.route('/api/topupleaf', type='json', auth="none", methods=['POST'])
+    def topup_leaf(self, **kwargs):
+        # Load JSON data from the request
+        try:
+            data = json.loads(request.httprequest.data)
+        except json.JSONDecodeError:
+            return {'error': 'Invalid JSON data'}
+
+        # Retrieve the authorization token from headers
+        token = request.httprequest.headers.get('Authorization')
+
+        if not token:
+            return {'error': 'Authorization token is missing'}
+
+        # Validate the token (you need to implement the validate_token method)
+        if not self.validate_token(token):
+            return {'error': 'Invalid authorization token'}
+
+        # Get the customer ID and leaf points from the data
+        customer_id = data.get('customer_id')
+        leaf_points = data.get('leaf_points')
+
+        if not customer_id or not leaf_points:
+            return {'error': 'customer_id or leaf_points is missing'}
+
+        # Search for the loyalty card using the customer_id
+        loyalty_card = request.env['loyalty.card'].sudo().search([('partner_id', '=', customer_id)], limit=1)
+
+        if not loyalty_card:
+            return {'error': 'No loyalty card found for this customer'}
+
+        # Assuming you want to top up leaf points on the loyalty card
+        loyalty_card.points += leaf_points
+        loyalty_card.sudo().write({'points': loyalty_card.points})
+
+        # Respond with success message
+        return {'result': 'Leaf points topped up successfully', 'leaf_points': loyalty_card.points}
 
     @http.route('/api/getauth', type='json', auth="none",methods=['GET'], csrf=False, save_session=False, cors="*")
     def get_auth(self, **kwargs):

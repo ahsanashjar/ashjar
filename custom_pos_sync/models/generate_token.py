@@ -22,7 +22,7 @@ class ResPartner(models.Model):
     _inherit = 'res.partner'
 
     dob = fields.Date(string='Date of Birth')
-    phonecode = fields.Char(string='Country Code')
+    phonecode = fields.Char(string='Phone Code')
     gender = fields.Selection([
         ('male', 'Male'),
         ('female', 'Female'),
