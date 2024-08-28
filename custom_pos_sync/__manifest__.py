@@ -1,6 +1,6 @@
 {
     'name' : 'Customer & POS API',
-    'version': '1.1',
+    'version': '1.0',
     'summary': 'Sync Customer,Leaf Balance',
     'author': "~Areterix Technologies LLP",
     'website': "https://areterix.com",
