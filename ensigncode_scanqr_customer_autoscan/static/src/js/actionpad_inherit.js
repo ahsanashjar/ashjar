@@ -26,7 +26,7 @@ document.addEventListener("DOMContentLoaded", () => {
                                 <!-- Scanner Canvas -->
                                 <canvas id="camera_canvas" style="position:absolute; top:0; left:0; width:100%; height:100%;"></canvas>
                             </div>
-                            <button id="capture_image">Capture Image</button>
+                            
                         </div>
                     </div>
                 </div>
