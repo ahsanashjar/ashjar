@@ -113,6 +113,58 @@ class RegisterCustomerData(http.Controller):
         # Get the customer ID and leaf points from the data
         customer_id = data.get('customer_id')
         leaf_points = data.get('leaf_points')
+        partner_model = request.env['res.partner'].sudo()
+        partner = partner_model.search([('id', '=', customer_id)], limit=1)
+        if not partner:
+            return {'error': 'Customer Not Registered,First Register Customer'}
+        if not customer_id or not leaf_points:
+            return {'error': 'customer_id or leaf_points is missing'}
+
+        # Search for the loyalty card using the customer_id
+        loyalty_card = request.env['loyalty.card'].sudo().search([('partner_id', '=', customer_id)], limit=1)
+        program = request.env['loyalty.program'].sudo().search([('program_type', '=', 'loyalty')], limit=1)
+
+
+        if not loyalty_card:
+            loyalty_card = request.env['loyalty.card'].sudo().create({
+                'partner_id': customer_id,
+                'points': 0,  # or any default value
+                'program_id': program.id,
+            })
+            if not loyalty_card:
+                return {'error': 'Failed to create a new loyalty card'}
+
+
+        # Assuming you want to top up leaf points on the loyalty card
+        loyalty_card.write({
+            'points': loyalty_card.points + leaf_points
+        })
+
+
+        # Respond with success message
+        return {'success': 'Top-up successful', 'new_balance': loyalty_card.points}
+
+    @http.route('/api/updateleaf', type='json', auth="none", methods=['POST'])
+    def update_leaf(self, **kwargs):
+        # Load JSON data from the request
+        try:
+            data = json.loads(request.httprequest.data)
+        except json.JSONDecodeError:
+            return {'error': 'Invalid JSON data'}
+
+        # Retrieve the authorization token from headers
+        token = request.httprequest.headers.get('Authorization')
+
+        if not token:
+            return {'error': 'Authorization token is missing'}
+
+        # Validate the token (you need to implement the validate_token method)
+        if not self.validate_token(token):
+            return {'error': 'Invalid authorization token'}
+
+        # Get the customer ID and leaf points from the data
+        customer_id = data.get('customer_id')
+        leaf_points = data.get('leaf_points')
 
         if not customer_id or not leaf_points:
             return {'error': 'customer_id or leaf_points is missing'}
@@ -124,11 +176,11 @@ class RegisterCustomerData(http.Controller):
             return {'error': 'No loyalty card found for this customer'}
 
         # Assuming you want to top up leaf points on the loyalty card
-        loyalty_card.points += leaf_points
-        loyalty_card.sudo().write({'points': loyalty_card.points})
+
+        loyalty_card.sudo().write({'points': leaf_points})
 
         # Respond with success message
-        return {'result': 'Leaf points topped up successfully', 'leaf_points': loyalty_card.points}
+        return {'result': 'Leaf points Updated successfully', 'leaf_points': leaf_points}
 
     @http.route('/api/getauth', type='json', auth="none",methods=['GET'], csrf=False, save_session=False, cors="*")
     def get_auth(self, **kwargs):

@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<odoo>
+    <!-- Tree View Definition -->
+    <record id="view_leaf_history_tree" model="ir.ui.view">
+        <field name="name">leaf.history.tree</field>
+        <field name="model">leaf.history</field>
+        <field name="arch" type="xml">
+            <tree string="POS Leaf History">
+                <field name="partner_id"/>
+                <field name="order_number"/>
+                <field name="points_won"/>
+                <field name="points_cost"/>
+            </tree>
+        </field>
+    </record>
+
+
+    <!-- Action to Open the Tree View -->
+    <record id="action_leaf_history" model="ir.actions.act_window">
+        <field name="name">POS Leaf History</field>
+        <field name="res_model">leaf.history</field>
+        <field name="view_mode">tree,form</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_create">
+                Click to create a new POS leaf history record.
+            </p>
+        </field>
+    </record>
+
+    <!-- Menu Item -->
+    <menuitem id="menu_leaf_history" name="Leaf History"
+              parent="base.menu_administration"
+              action="action_leaf_history"
+              sequence="11"/>
+
+</odoo>

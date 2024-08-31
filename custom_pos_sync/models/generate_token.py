@@ -22,6 +22,27 @@ class AuthToken(models.Model):
         else:
             return self.write({'token': secrets.token_hex(16)})
 
+class LeafHistory(models.Model):
+    _name = 'leaf.history'
+    _description = 'Leaf History Data'
+
+    partner_id = fields.Many2one('res.partner', string='Partner')
+    order_number = fields.Char(string='POS Order Number')
+    points_won = fields.Float(string='POS Won Points')
+    points_cost = fields.Float(string='POS Spent Points')
+
+    @api.model
+    def create_leaf_history(self, partner_id, order_number, points_won, points_cost):
+
+
+        # Create the history record
+        self.create({
+            'partner_id': partner_id,
+            'order_number': order_number,
+            'points_won': points_won,
+            'points_cost': -points_cost,
+        })
+
 
 class ResPartner(models.Model):
     _inherit = 'res.partner'
@@ -71,9 +92,10 @@ class PosOrder(models.Model):
                 'add_points': points_won,
                 'deduct_points': -points_cost
             })
+            self.env['leaf.history'].create_leaf_history(partner_id, order_number, points_won, points_cost)
 
             # Call the API with dynamically fetched stock data
-            call_leaf_api = self.add_leaf_history_api(leaf_data)
+            #call_leaf_api = self.add_leaf_history_api(leaf_data)
             # Log details
             _logger.info("POS order has been validated!")
             _logger.info("Partner ID: %s", partner_id)
