@@ -8,7 +8,6 @@
 """,
     'category': 'Point Of Sale',
     'website': 'https://areterix.com',
-    'website': '',
     'depends': ['point_of_sale','web'],
     'data': [
         #'data/sevrer_actions.xml',
