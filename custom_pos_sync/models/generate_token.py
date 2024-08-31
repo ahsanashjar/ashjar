@@ -95,7 +95,7 @@ class PosOrder(models.Model):
             self.env['leaf.history'].create_leaf_history(partner_id, order_number, points_won, points_cost)
 
             # Call the API with dynamically fetched stock data
-            #call_leaf_api = self.add_leaf_history_api(leaf_data)
+            call_leaf_api = self.add_leaf_history_api(leaf_data)
             # Log details
             _logger.info("POS order has been validated!")
             _logger.info("Partner ID: %s", partner_id)
