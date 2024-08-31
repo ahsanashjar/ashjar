@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates id="template" xml:space="preserve">
+    <t t-name="ensigncode_scanqr_customer.ActionScanQR" t-inherit="point_of_sale.ActionpadWidget" t-inherit-mode="extension">
+        <xpath expr="//button[hasclass('pay-order-button')]" position="before">
+             <button class="button scan-qr btn btn-light rounded-0 py-2 flex-shrink-1 fw-bolder" id="scan-qr-btn"
+                t-on-click="onClick">
+                <div class="d-flex justify-content-center align-items-center">
+                    <div>
+                        ScanQR
+                    </div>
+                </div>
+            </button>
+        </xpath>
+    </t>
+</templates>
+
