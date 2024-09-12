@@ -128,7 +128,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
             try {
                 const domain = [['phone', '=', code]];
-                const fields = ['name', 'phone', 'id'];
+                const fields = ['phone'];
 
                 const response = await this.orm.call('res.partner', 'search_read', [domain, fields]);
 
