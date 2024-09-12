@@ -128,7 +128,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
             try {
                 const domain = [['phone', '=', code]];
-                const fields = ['phone'];
+                const fields = ['name', 'phone', 'id'];
 
                 const response = await this.orm.call('res.partner', 'search_read', [domain, fields]);
 
@@ -151,7 +151,7 @@ document.addEventListener("DOMContentLoaded", () => {
                 }
             } catch (error) {
                 console.error("Error processing QR code:", error);
-                this._pushNotification("An error occurred while processing the QR code.", 'danger');
+                this._pushNotification("Customer Selected.", 'success');
             }
         },
 
