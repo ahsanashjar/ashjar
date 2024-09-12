@@ -150,7 +150,7 @@ document.addEventListener("DOMContentLoaded", () => {
                     this._pushNotification("No customer found with the scanned code.", 'danger');
                 }
             } catch (error) {
-                console.error("Error processing QR code:", error);
+                //console.error("Error processing QR code:", error);
                 this._pushNotification("Customer Selected.", 'success');
             }
         },
