@@ -15,6 +15,7 @@
         'views/customer_creator_button_view.xml',
         'views/customer_creator_tree_view.xml',
         'views/product_template_views.xml',
+        'report/ir_actions_report.xml',
     ],
     'demo': [],
     'images': [],

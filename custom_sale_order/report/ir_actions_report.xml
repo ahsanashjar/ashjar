@@ -1,0 +1,185 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <template id="report_saleorder_document_md_pro">
+        <t t-call="web.external_layout">
+
+            <t t-set="doc" t-value="doc.with_context(lang=doc.partner_id.lang)"/>
+            <t t-set="forced_vat"
+               t-value="doc.fiscal_position_id.foreign_vat"/> <!-- So that it appears in the footer of the report instead of the company VAT if it's set -->
+            <t t-set="address">
+                <span>
+                    <strong>Delivery Address:</strong>
+                </span>
+                <div t-field="doc.partner_id"
+                     t-options='{"widget": "contact", "fields": ["address", "name","phone","email"], "no_marker": True,"phone_icons": True}'/>
+
+            </t>
+            <t t-if="doc.partner_shipping_id == doc.partner_invoice_id
+                             and doc.partner_invoice_id != doc.partner_id
+                             or doc.partner_shipping_id != doc.partner_invoice_id">
+                <t t-set="information_block">
+                    <strong>
+                        <t t-if="doc.partner_shipping_id == doc.partner_invoice_id">
+                            Invoicing and Shipping Address:
+                        </t>
+                        <t t-else="">
+                            Invoicing Address:
+                        </t>
+                    </strong>
+                    <div t-field="doc.partner_invoice_id"
+                         t-options='{"widget": "contact", "fields": ["address", "name", "phone"], "no_marker": True, "phone_icons": True}'/>
+                    <t t-if="doc.partner_shipping_id != doc.partner_invoice_id">
+                        <strong>Shipping Address:</strong>
+                        <div t-field="doc.partner_shipping_id"
+                             t-options='{"widget": "contact", "fields": ["address", "name", "phone"], "no_marker": True, "phone_icons": True}'/>
+                    </t>
+                </t>
+            </t>
+            <div class="page">
+
+                <div class="oe_structure"/>
+
+                <h2>
+                    <t t-if="doc.picking_ids">
+                        <t t-foreach="doc.picking_ids" t-as="picking">
+                            <span t-field="picking.name"/>
+                            <br/>
+                        </t>
+                    </t>
+                </h2>
+
+                <div class="row mt-4 mb-2" id="informations">
+
+
+                    <div t-if="doc.date_order" class="col-auto col-3 mw-100 mb-2" name="informations_date">
+                        <strong t-if="doc.state in ['draft', 'sent']">Quotation Date:</strong>
+                        <strong t-else="">Order</strong>
+                        <br/>
+                        <span class="m-0" t-field="doc.name">SO0000</span>
+                    </div>
+                    <div t-if="doc.picking_ids" class="col-auto col-3 mw-100 mb-2" name="informations_delivery_date">
+                        <t t-set="first_picking" t-value="doc.picking_ids[0]"/>
+                        <strong>Shipping Date:</strong>
+                        <p t-if="first_picking.state == 'done'" t-field="first_picking.date_done"/>
+                        <p t-else="" t-field="first_picking.scheduled_date"/>
+                    </div>
+
+                </div>
+
+                <!-- Is there a discount on at least one line? -->
+                <t t-set="lines_to_report" t-value="doc._get_order_lines_to_report()"/>
+                <!--                <t t-set="display_discount" t-value="any(l.discount for l in lines_to_report)"/>-->
+
+                <div class="oe_structure"></div>
+                <table class="table table-sm o_main_table table-borderless mt-4">
+                    <!-- In case we want to repeat the header, remove "display: table-row-group" -->
+                    <thead style="display: table-row-group">
+                        <tr>
+                            <th name="th_description" class="text-start">Product</th>
+                            <th name="th_quantity" class="text-end">Orderd</th>
+                            <th name="th_dquantity" class="text-end">Delivered</th>
+                        </tr>
+                    </thead>
+                    <tbody class="sale_tbody">
+                        <t t-foreach="lines_to_report" t-as="line">
+                            <!-- Conditionally assign classes to the row -->
+                            <tr t-att-class="'bg-200 fw-bold o_line_section' if line.display_type == 'line_section' else 'fst-italic o_line_note'">
+                                <!-- Check if it's not a special display type like 'line_section' or 'line_note' -->
+                                <t t-if="not line.display_type and line.product_id.type in ['consu', 'product']">
+                                    <!-- Product Name Column -->
+                                    <td name="td_name">
+                                        <span t-field="line.name"/>
+                                    </td>
+
+                                    <!-- Ordered Quantity Column -->
+                                    <td name="td_quantity" class="text-end">
+                                        <span t-field="line.product_uom_qty">3</span> <!-- Default 3 as a fallback -->
+                                        <span t-field="line.product_uom">units</span>
+                                        <t t-if="line.product_packaging_id">
+                                            (
+                                            <span t-field="line.product_packaging_qty"
+                                                  t-options='{"widget": "integer"}'/>
+                                            <span t-field="line.product_packaging_id"/>)
+                                        </t>
+                                    </td>
+
+                                    <!-- Delivered Quantity Column -->
+                                    <td name="td_dqty" class="text-end">
+                                        <span t-field="line.qty_delivered">0</span> <!-- Default 0 as a fallback -->
+                                    </td>
+                                </t>
+                            </tr>
+                        </t>
+                    </tbody>
+
+                    <!--                    <tbody class="sale_tbody">-->
+                    <!--                        <t t-foreach="lines_to_report" t-as="line">-->
+                    <!--                            <tr t-att-class="'bg-200 fw-bold o_line_section' if line.display_type == 'line_section' else 'fst-italic o_line_note'">-->
+                    <!--                                <t t-if="not line.display_type">-->
+                    <!--                                    <tr>-->
+                    <!--                                        <td name="td_name">-->
+                    <!--                                            <span t-field="line.product_id.name"/>-->
+                    <!--                                        </td>-->
+                    <!--                                    </tr>-->
+                    <!--                                    <td name="td_quantity" class="text-end">-->
+                    <!--                                        <span t-field="line.product_uom_qty">3</span>-->
+                    <!--                                        <span t-field="line.product_uom">units</span>-->
+                    <!--                                        <span t-if="line.product_packaging_id">-->
+                    <!--                                            (-->
+                    <!--                                            <span t-field="line.product_packaging_qty"-->
+                    <!--                                                  t-options='{"widget": "integer"}'/>-->
+                    <!--                                            <span t-field="line.product_packaging_id"/>)-->
+                    <!--                                        </span>-->
+                    <!--                                    </td>-->
+                    <!--                                    <td name="td_dqty" class="text-end">-->
+
+                    <!--                                        <span t-field="line.qty_delivered">0</span>-->
+
+                    <!--                                    </td>-->
+                    <!--                                </t>-->
+                    <!--                            </tr>-->
+                    <!--                        </t>-->
+                    <!--                    </tbody>-->
+                </table>
+                <div class="oe_structure"></div>
+
+                <div t-if="not doc.signature" class="oe_structure"></div>
+                <div t-else="" class="mt-4 ml64 mr4" name="signature">
+                    <div class="offset-8">
+                        <strong>Signature</strong>
+                    </div>
+                    <div class="offset-8">
+                        <img t-att-src="image_data_uri(doc.signature)" style="max-height: 4cm; max-width: 8cm;"/>
+                    </div>
+                    <div class="offset-8 text-center">
+                        <span t-field="doc.signed_by">Oscar Morgan</span>
+                    </div>
+                </div>
+            </div>
+        </t>
+    </template>
+
+    <record id="action_report_saleorder_inherit" model="ir.actions.report">
+        <field name="name">Delivery Order</field>
+        <field name="model">sale.order</field>
+        <field name="report_type">qweb-pdf</field>
+        <field name="report_name">custom_sale_order.report_saleorder_document_md</field>
+        <field name="report_file">custom_sale_order.report_saleorder_document_md</field>
+        <field name="print_report_name">'Delivery Slip - %s' % (object.partner_id.name)</field>
+        <field name="binding_model_id" ref="sale.model_sale_order"/>
+        <field name="binding_type">report</field>
+    </record>
+
+    <template id="report_saleorder_document_md">
+        <t t-call="custom_sale_order.report_saleorder_raw1"/>
+    </template>
+
+    <template id="report_saleorder_raw1">
+        <t t-call="web.html_container">
+            <t t-foreach="docs" t-as="doc">
+                <t t-call="custom_sale_order.report_saleorder_document_md_pro" t-lang="doc.partner_id.lang"/>
+            </t>
+        </t>
+    </template>
+
+</odoo>
