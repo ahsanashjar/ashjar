@@ -204,3 +204,72 @@ class RegisterCustomerData(http.Controller):
             }})
         else:
             return data.get('result', {'message': 'Issue on the token generation'})
+
+    @http.route('/api/topupleafv2', type='json', auth="none", methods=['POST'])
+    def topup_leaf_final(self, **kwargs):
+        # Load JSON data from the request
+        try:
+            data = json.loads(request.httprequest.data)
+        except json.JSONDecodeError:
+            return {'error': 'Invalid JSON data'}
+
+        # Retrieve the authorization token from headers
+        token = request.httprequest.headers.get('Authorization')
+
+        if not token:
+            return {'error': 'Authorization token is missing'}
+
+        # Validate the token (you need to implement the validate_token method)
+        if not self.validate_token(token):
+            return {'error': 'Invalid authorization token'}
+
+        # Get the customer IDs and leaf points from the data
+        customer_ids = data.get('customer_id')
+        leaf_points = data.get('leaf_points')
+
+        # if not customer_ids or not isinstance(customer_ids, list):
+        #     return {'error': 'customer_id should be a list of IDs'}
+
+        if not leaf_points:
+            return {'error': 'leaf_points is missing'}
+
+        results = []
+        success_count = 0
+
+        # Loop through each customer_id and process the top-up
+        for customer_id in customer_ids:
+            partner_model = request.env['res.partner'].sudo()
+            partner = partner_model.search([('id', '=', customer_id)], limit=1)
+
+            if not partner:
+                results.append(
+                    {'customer_id': customer_id, 'error': 'Customer Not Registered, First Register Customer'})
+                continue
+
+            # Search for the loyalty card using the customer_id
+            loyalty_card = request.env['loyalty.card'].sudo().search([('partner_id', '=', customer_id)], limit=1)
+            program = request.env['loyalty.program'].sudo().search([('program_type', '=', 'loyalty')], limit=1)
+
+            if not loyalty_card:
+                loyalty_card = request.env['loyalty.card'].sudo().create({
+                    'partner_id': customer_id,
+                    'points': 0,  # Default value for new cards
+                    'program_id': program.id,
+                })
+                if not loyalty_card:
+                    results.append({'customer_id': customer_id, 'error': 'Failed to create a new loyalty card'})
+                    continue
+
+            # Top up leaf points on the loyalty card
+            loyalty_card.write({
+                'points': loyalty_card.points + leaf_points
+            })
+
+            # Append success result for this customer
+            results.append({'customer_id': customer_id, 'status': 'success', 'updated_points': loyalty_card.points})
+            success_count += 1
+
+        # Return the result for all customers
+
+        # return {'success': 'Top-up successful', 'results': results}
+        return {'success': 'Top-up successful', 'customer counts': success_count}
