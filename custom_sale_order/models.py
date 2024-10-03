@@ -55,9 +55,55 @@ class TempPicking(models.Model):
 
     picking_id = fields.Many2one('stock.picking', string='Picking')
     sale_order_id = fields.Many2one('sale.order', string='Sale Order')
+    location_name = fields.Char(string='Location Name')
 
 
     def _validate_temp_pickings(self):
+        temp_pickings = self.env['temp.picking'].search([])
+
+        for temp_picking in temp_pickings:
+            picking = temp_picking.picking_id
+            location = self.env['stock.location'].search([('name', '=', temp_picking.location_name)], limit=1)
+            if not location:
+                _logger.warning('Location with name "%s" not found', 'Rabie Stock')
+                continue
+            picking.write({'location_id': location.id})
+            # picking.button_validate()
+            # _logger.info('Picking validated: %s', picking.id)
+            if picking.state == 'assigned':
+                picking.button_validate()
+                _logger.info('Picking validated: %s', picking.id)
+            else:
+                _logger.warning('Picking not in "assigned" state: %s', picking.id)
+                continue
+
+            # Retrieve the sale order using sale_order_id
+            sale_order = temp_picking.sale_order_id
+            if sale_order:
+                # Create invoices for the sale order
+                user = sale_order.env['crm.team'].search([('name', '=', 'Online Sales')], limit=1)
+                sale_order.write({'team_id': user.id})
+                invoices = sale_order._create_invoices()
+
+                #journal update
+                journal = self.env['account.journal'].search([('name', '=', 'Online Sales')], limit=1)
+                if invoices:
+                    for invoice in invoices:
+                        #update journal
+                        invoice.write({'journal_id': journal.id})
+                        invoice.action_post()
+                        _logger.info('Invoice posted: %s', invoice.id)
+                        # Register and confirm the payment
+                        self.register_and_confirm_payment(invoice)
+                        temp_picking.unlink()  # Remove entry after validation
+                else:
+                    raise UserError("No invoices were created for Sale Order: %s" % sale_order.name)
+            else:
+                _logger.error('Sale Order not found for Temp Picking: %s', temp_picking.id)
+
+
+
+    def _validate_temp_pickings1(self):
         temp_pickings = self.env['temp.picking'].search([])
         for temp_picking in temp_pickings:
             picking = temp_picking.picking_id
@@ -438,6 +484,7 @@ class CustomerCreator(models.Model):
         customer_data = order_data["customer"]
         sale_voucher = order_data["sale_order"]["sale_order_no"]
         discount_amount = order_data["sale_order"]["discount_amount"]
+        location_name = order_data["sale_order"]["location"]
 
         # print('commitment_date', commitment_date)
         # print('sale_id', sale_id)
@@ -505,6 +552,7 @@ class CustomerCreator(models.Model):
             self.env['temp.picking'].create({
                 'picking_id': picking.id,
                 'sale_order_id': new_sale_order.id,
+                'location_name': location_name
             })
         #print('invoices',invoices)
 
