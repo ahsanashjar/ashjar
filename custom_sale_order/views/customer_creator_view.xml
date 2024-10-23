@@ -1,0 +1,56 @@
+<odoo>
+    <data>
+        <!-- Define a view for the button only -->
+        <record id="view_customer_creator_button" model="ir.ui.view">
+            <field name="name">customer.creator.button.view</field>
+            <field name="model">customer.creator</field>
+            <field name="arch" type="xml">
+                <form string="Customer Creator">
+                    <header>
+                        <button name="create_sale_orders_from_data" string="Fetch Data" type="object" class="oe_highlight"/>
+                    </header>
+                    <sheet>
+                        <group>
+                            <field name="request_date"/>
+                            <field name="json_data"/>
+                            <field name="status"/>
+                        </group>
+                    </sheet>
+                </form>
+            </field>
+        </record>
+
+        <record id="view_customer_creator_tree" model="ir.ui.view">
+            <field name="name">customer.creator.tree</field>
+            <field name="model">customer.creator</field>
+            <field name="arch" type="xml">
+                <tree string="Customer Creator">
+                    <field name="request_date"/>
+                    <field name="json_data"/>
+                    <field name="status"/>
+                </tree>
+            </field>
+        </record>
+
+        <!-- Update the action to point to the button-only view -->
+        <record id="action_customer_creator_button" model="ir.actions.act_window">
+            <field name="name">Customer Creator</field>
+            <field name="res_model">customer.creator</field>
+            <field name="view_mode">form</field>
+            <field name="view_id" ref="view_customer_creator_button"/>
+            <field name="target">current</field>
+        </record>
+
+        <record id="action_customer_creator_tree" model="ir.actions.act_window">
+            <field name="name">Customer Creator</field>
+            <field name="res_model">customer.creator</field>
+            <field name="view_mode">tree</field>
+            <field name="view_id" ref="view_customer_creator_tree"/>
+        </record>
+
+        <!-- Update the menu item to point to the new action -->
+        <menuitem id="menu_customer_creator_root" name="Sale Order Creator" sequence="10" parent="sale.sale_order_menu"/>
+        <menuitem id="menu_customer_creator" name="Customer Creator" parent="menu_customer_creator_root" action="action_customer_creator_button"/>
+        <menuitem id="menu_customer_creator_tree" name="Customer Creator View" parent="menu_customer_creator_root" action="action_customer_creator_tree"/>
+    </data>
+</odoo>
