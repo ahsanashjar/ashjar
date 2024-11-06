@@ -184,6 +184,7 @@ class StockPicking(models.Model):
         #Mohammad Malek 6 November Temporary Turn Off The Live Sync Update For Client Request
         #self.update_stock_qty()
         #
+        ## test
 
         # Return the result of the super call
         return res
