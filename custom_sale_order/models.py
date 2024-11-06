@@ -183,7 +183,7 @@ class StockPicking(models.Model):
         # Now call the API method to update stock quantity
         #Mohammad Malek 6 November Temporary Turn Off The Live Sync Update For Client Request
         #self.update_stock_qty()
-
+        #
 
         # Return the result of the super call
         return res
