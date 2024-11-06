@@ -181,7 +181,8 @@ class StockPicking(models.Model):
         res = super(StockPicking, self).button_validate()
         #print('husen', res)
         # Now call the API method to update stock quantity
-        self.update_stock_qty()
+        #Mohammad Malek 6 November Temporary Turn Off The Live Sync Update For Client Request
+        #self.update_stock_qty()
 
 
         # Return the result of the super call
