@@ -64,6 +64,7 @@ class TempPicking(models.Model):
 
         for temp_picking in temp_pickings:
             picking = temp_picking.picking_id
+            ecom_sale_id = temp_picking.ecom_sale_id
             location = self.env['stock.location'].search([('name', '=', temp_picking.location_name)], limit=1)
             if not location:
                 _logger.warning('Location with name "%s" not found', 'Rabie Stock')
