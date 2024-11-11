@@ -61,7 +61,7 @@ class TempPicking(models.Model):
 
     def _validate_temp_pickings(self):
         temp_pickings = self.env['temp.picking'].search([])
-        print('temp_pickings',temp_pickings)
+
         for temp_picking in temp_pickings:
             picking = temp_picking.picking_id
             location = self.env['stock.location'].search([('name', '=', temp_picking.location_name)], limit=1)
@@ -194,6 +194,24 @@ class TempPicking(models.Model):
             return response.json()
         else:
             raise UserError(f"Failed to Attach Invoice: {response.status_code} {response.text}")
+
+
+class CustomModule(models.Model):
+    _inherit = 'account.move'  # Or any other model in your custom module
+
+    @api.model
+    def get_invoice_share_link(self, invoice_id):
+        """Generate the share link for an invoice using its ID."""
+        invoice = self.env['account.move'].browse(invoice_id)
+        if not invoice or invoice.state == 'draft':
+            return None  # Return None if the invoice doesn't exist or is still a draft
+
+        # Construct the share link
+        base_url = invoice.get_base_url()
+        share_url = invoice._get_share_url(redirect=True)
+
+        # Return the full share link
+        return f"{base_url}{share_url}"
 
 
 class StockPicking(models.Model):
