@@ -61,7 +61,7 @@ class TempPicking(models.Model):
 
     def _validate_temp_pickings(self):
         temp_pickings = self.env['temp.picking'].search([])
-
+        print('temp_pickings',temp_pickings)
         for temp_picking in temp_pickings:
             picking = temp_picking.picking_id
             location = self.env['stock.location'].search([('name', '=', temp_picking.location_name)], limit=1)
