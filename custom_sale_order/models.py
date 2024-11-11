@@ -13,6 +13,7 @@ from odoo.exceptions import UserError
 SECRETKEY = "sk_e2a2d95a-34d4-4c58-8adf-21d7822f13f0"
 API_URL = "https://console.ashjar.sa/api/v1/odoo/"
 
+
 class ReturnPicking(models.Model):
     _name = 'return.picking'
     _description = 'Return Temporary Picking'
@@ -27,7 +28,7 @@ class ReturnPicking(models.Model):
 
             picking = self.env['stock.picking'].browse(picking_id)
 
-            #print('picking.id', picking.id)
+            # print('picking.id', picking.id)
 
             # Assuming there's a method like `action_return` in `stock.picking` model
             if picking.state == 'done':
@@ -41,7 +42,7 @@ class ReturnPicking(models.Model):
             # Validate the picking object
             if picking:
                 picking.button_validate()
-                #print(f"Validated stock.picking with ID {return_wizard[0]}")
+                # print(f"Validated stock.picking with ID {return_wizard[0]}")
             else:
                 print(f"Could not find stock.picking with ID {return_wizard[0]}")
 
@@ -56,7 +57,7 @@ class TempPicking(models.Model):
     picking_id = fields.Many2one('stock.picking', string='Picking')
     sale_order_id = fields.Many2one('sale.order', string='Sale Order')
     location_name = fields.Char(string='Location Name')
-
+    ecom_sale_id = fields.Char(string='Ecom Sale Id')
 
     def _validate_temp_pickings(self):
         temp_pickings = self.env['temp.picking'].search([])
@@ -85,23 +86,29 @@ class TempPicking(models.Model):
                 sale_order.write({'team_id': user.id})
                 invoices = sale_order._create_invoices()
 
-                #journal update
+                # journal update
                 journal = self.env['account.journal'].search([('name', '=', 'Online Sales')], limit=1)
                 if invoices:
                     for invoice in invoices:
-                        #update journal
+                        # update journal
                         invoice.write({'journal_id': journal.id})
                         invoice.action_post()
                         _logger.info('Invoice posted: %s', invoice.id)
                         # Register and confirm the payment
                         self.register_and_confirm_payment(invoice)
+                        invoice_id = invoice.id  # Replace with the actual invoice ID
+                        share_link = self.env['account.move'].get_invoice_share_link(invoice_id)
+                        attach_invoice = self.attach_single_sale_invoice(ecom_sale_id, share_link)
+
+                        if attach_invoice:
+                            _logger.info('Invoice Share Link: %s', share_link)
+                        else:
+                            _logger.warning('No share link found for Invoice ID: %s', invoice_id)
                         temp_picking.unlink()  # Remove entry after validation
                 else:
                     raise UserError("No invoices were created for Sale Order: %s" % sale_order.name)
             else:
                 _logger.error('Sale Order not found for Temp Picking: %s', temp_picking.id)
-
-
 
     def _validate_temp_pickings1(self):
         temp_pickings = self.env['temp.picking'].search([])
@@ -124,11 +131,11 @@ class TempPicking(models.Model):
                 sale_order.write({'team_id': user.id})
                 invoices = sale_order._create_invoices()
 
-                #journal update
+                # journal update
                 journal = self.env['account.journal'].search([('name', '=', 'Online Sales')], limit=1)
                 if invoices:
                     for invoice in invoices:
-                        #update journal
+                        # update journal
                         invoice.write({'journal_id': journal.id})
                         invoice.action_post()
                         _logger.info('Invoice posted: %s', invoice.id)
@@ -171,6 +178,22 @@ class TempPicking(models.Model):
 
         _logger.info('Payment registered and confirmed for Invoice: %s', invoice.id)
 
+    def attach_single_sale_invoice(self, sale_order_id, invoice_attachement):
+
+        # Api 6
+        # Mohammad
+        url = API_URL + "attach_single_sale_invoice"
+        body = {
+            "secret_key": SECRETKEY,
+            "sale_order_id": sale_order_id,
+            "invoice_attachement": invoice_attachement
+        }
+
+        response = requests.post(url, json=body)
+        if response.status_code == 200:
+            return response.json()
+        else:
+            raise UserError(f"Failed to Attach Invoice: {response.status_code} {response.text}")
 
 
 class StockPicking(models.Model):
@@ -179,10 +202,10 @@ class StockPicking(models.Model):
     def button_validate(self):
         # Call the super method first to ensure the stock picking is validated
         res = super(StockPicking, self).button_validate()
-        #print('husen', res)
+        # print('husen', res)
         # Now call the API method to update stock quantity
-        #Mohammad Malek 6 November Temporary Turn Off The Live Sync Update For Client Request
-        #self.update_stock_qty()
+        # Mohammad Malek 6 November Temporary Turn Off The Live Sync Update For Client Request
+        # self.update_stock_qty()
         #
         ## test
 
@@ -222,8 +245,9 @@ class StockPicking(models.Model):
 
 class ProductTemplate(models.Model):
     _inherit = 'product.product'
+
     # inherit and set product ecom id product master
-    #default_code = fields.Char(string='Product Variant Ecom_id')
+    # default_code = fields.Char(string='Product Variant Ecom_id')
 
     def action_update_product_v_price(self):
         for product in self:
@@ -253,9 +277,10 @@ class ProductTemplate(models.Model):
 
 class ProductTemplate(models.Model):
     _inherit = 'product.template'
+
     # inherit and set product ecom id product master
-    #ecom_product_id = fields.Char(string='E-commerce Product ID')
-    #default_code = fields.Char(string='Product Variant Ecom_id')
+    # ecom_product_id = fields.Char(string='E-commerce Product ID')
+    # default_code = fields.Char(string='Product Variant Ecom_id')
 
     # Mohammad
     # Api 4
@@ -320,7 +345,6 @@ class CustomerCreator(models.Model):
 
     # this function will work create product if not exits if exists then return product id
 
-
     @api.model
     def create_product_if_not_exists(self, default_code):
         Product = self.env['product.product']
@@ -334,15 +358,15 @@ class CustomerCreator(models.Model):
 
     @api.model
     def create_sale_order_lines(self, sale_order_id, sale_order_lines_data, discount_amount):
-        #print('sale_order_lines_data',sale_order_lines_data)
+        # print('sale_order_lines_data',sale_order_lines_data)
         SaleOrderLine = self.env['sale.order.line']
         discount_product_name = "Discount"  # Replace with your actual discount product name
         discount_product = self.env['product.product'].search([('name', '=', discount_product_name)], limit=1)
 
         for line_data in sale_order_lines_data:
-            #,line_data.get('product_color_name'),line_data.get('default_code')
+            # ,line_data.get('product_color_name'),line_data.get('default_code')
             product = self.create_product_if_not_exists(line_data.get('product_sku'))
-            #product = self.create_product_variant_if_not_exists(line_data.get('product_name'), line_data.get('product_id'))
+            # product = self.create_product_variant_if_not_exists(line_data.get('product_name'), line_data.get('product_id'))
             print('md_product', product)
             SaleOrderLine.create({
                 'order_id': sale_order_id,
@@ -360,7 +384,6 @@ class CustomerCreator(models.Model):
                 'product_uom_qty': 1
             })
 
-
     # Api 1
     # this is first api fetch last sale order this will call via webhook
     @api.model
@@ -377,7 +400,6 @@ class CustomerCreator(models.Model):
         else:
             raise UserError(f"Failed to fetch data: {response.status_code} {response.text}")
 
-
     # Mohammad
     # Api 2
     # this is second api fetch 150 sale order this will call on main page sale order log view {server} action button.
@@ -393,7 +415,6 @@ class CustomerCreator(models.Model):
             return response.json()
         else:
             raise UserError(f"Failed to fetch data: {response.status_code} {response.text}")
-
 
     # Mohammad
     # Api 3
@@ -414,7 +435,7 @@ class CustomerCreator(models.Model):
 
     @api.model
     def return_sale_orders_from_data(self, sale_order_no):
-        #_logger = self.env['ir.logging']
+        # _logger = self.env['ir.logging']
 
         # Log the input sale order number
         print(f'Sale Order Number: {sale_order_no}')
@@ -439,7 +460,7 @@ class CustomerCreator(models.Model):
             sale_order.write({'state': 'cancel'})
 
         # Process invoices
-        print('sale_order.invoice_ids',sale_order.invoice_ids)
+        print('sale_order.invoice_ids', sale_order.invoice_ids)
         # Process invoices
         invoices = sale_order.invoice_ids.filtered(lambda inv: inv.state == 'posted')
         for invoice in invoices:
@@ -456,7 +477,6 @@ class CustomerCreator(models.Model):
 
         return f'Sale Order {sale_order.id} processed successfully.'
 
-
     # this is function for call last sale order creating in system and also sale order log view
     @api.model
     def create_sale_orders_from_data(self, active_id):
@@ -464,7 +484,7 @@ class CustomerCreator(models.Model):
 
         # Fetch sales data from the API
         sales_data = self.fetch_sales_data_from_api(active_id)
-        #print('sales_data', sales_data)
+        # print('sales_data', sales_data)
 
         # Ensure that sales_data contains data
         if "data" not in sales_data:
@@ -535,28 +555,28 @@ class CustomerCreator(models.Model):
             'name': sale_voucher,
             'payment_term_id': 1,
             'client_order_ref': payment_method,
-            #'user_id': salesperson_id.id  # Set the salesperson
+            # 'user_id': salesperson_id.id  # Set the salesperson
         })
 
         if not new_sale_order:
             raise UserError("Sale Order could not be created for customer: %s" % existing_customer.name)
 
         # Create sale order lines using the JSON data
-        #print('hi i am mohammad')
+        # print('hi i am mohammad')
         self.create_sale_order_lines(new_sale_order.id, order_data["sale_order_lines"], discount_amount)
 
-        #create sale order
+        # create sale order
         new_sale_order.action_confirm()
-
 
         pickings = new_sale_order.picking_ids.filtered(lambda p: p.state not in ('done', 'cancel'))
         for picking in pickings:
             self.env['temp.picking'].create({
                 'picking_id': picking.id,
                 'sale_order_id': new_sale_order.id,
-                'location_name': location_name
+                'location_name': location_name,
+                'ecom_sale_id': sale_id
             })
-        #print('invoices',invoices)
+        # print('invoices',invoices)
 
         update_flag_data = self.update_odoo_flag_api(sale_id)
         # print('update_flag_data', update_flag_data)
@@ -566,7 +586,6 @@ class CustomerCreator(models.Model):
             'json_data': json.dumps(order_data),
             'status': 'done'
         })
-
 
     # this is function for call fetch all sale order creating in system and also sale order log view
     @api.model
