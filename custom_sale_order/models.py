@@ -341,11 +341,13 @@ class CustomerCreator(models.Model):
         raise UserError('Please set up Odoo inventory with the Product Sku.')
 
     @api.model
-    def create_sale_order_lines(self, sale_order_id, sale_order_lines_data, discount_amount):
+    def create_sale_order_lines(self, sale_order_id, sale_order_lines_data, discount_amount,charged_with_wallet_amount):
         # print('sale_order_lines_data',sale_order_lines_data)
         SaleOrderLine = self.env['sale.order.line']
         discount_product_name = "Discount"  # Replace with your actual discount product name
+        discount_wallet = "Wallet Discount"  # Replace with your actual discount product name
         discount_product = self.env['product.product'].search([('name', '=', discount_product_name)], limit=1)
+        discount_product_wallet = self.env['product.product'].search([('name', '=', discount_wallet)], limit=1)
 
         for line_data in sale_order_lines_data:
             # ,line_data.get('product_color_name'),line_data.get('default_code')
@@ -358,7 +360,14 @@ class CustomerCreator(models.Model):
                 'product_uom_qty': line_data.get('quantity', 1),
                 'price_unit': line_data.get('unit_price', 0),
             })
-
+        charged_with_wallet = charged_with_wallet_amount
+        if charged_with_wallet:
+            SaleOrderLine.create({
+                'order_id': sale_order_id,
+                'product_id': discount_product_wallet.id,
+                'price_unit': -charged_with_wallet,
+                'product_uom_qty': 1
+            })
         discount_value = discount_amount
         if discount_value:
             SaleOrderLine.create({
@@ -490,6 +499,7 @@ class CustomerCreator(models.Model):
         customer_data = order_data["customer"]
         sale_voucher = order_data["sale_order"]["sale_order_no"]
         discount_amount = order_data["sale_order"]["discount_amount"]
+        charged_with_wallet_amount = order_data["sale_order"]["charged_with_wallet_amount"]
         location_name = order_data["sale_order"]["location"]
 
         # print('commitment_date', commitment_date)
@@ -547,7 +557,7 @@ class CustomerCreator(models.Model):
 
         # Create sale order lines using the JSON data
         # print('hi i am mohammad')
-        self.create_sale_order_lines(new_sale_order.id, order_data["sale_order_lines"], discount_amount)
+        self.create_sale_order_lines(new_sale_order.id, order_data["sale_order_lines"], discount_amount,charged_with_wallet_amount)
 
         # create sale order
         new_sale_order.action_confirm()
@@ -594,6 +604,7 @@ class CustomerCreator(models.Model):
             customer_data = order_data["customer"]
             sale_voucher = order_data["sale_order"]["sale_order_no"]
             discount_amount = order_data["sale_order"]["discount_amount"]
+            charged_with_wallet_amount = order_data["sale_order"]["charged_with_wallet_amount"]
 
             # Ensure existing_customer is set correctly
             existing_customer = self.env['res.partner'].search([('mobile', '=', customer_data["mobile"])], limit=1)
@@ -630,7 +641,7 @@ class CustomerCreator(models.Model):
 
             # Create sale order lines using the JSON data
             print('hi i am mohammads 2')
-            self.create_sale_order_lines(new_sale_order.id, order_data["sale_order_lines"], discount_amount)
+            self.create_sale_order_lines(new_sale_order.id, order_data["sale_order_lines"], discount_amount,charged_with_wallet_amount)
             update_flag_data = self.update_odoo_flag_api(sale_id)
 
             # Create record for the processed sale order
