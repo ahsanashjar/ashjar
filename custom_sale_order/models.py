@@ -77,7 +77,8 @@ class TempPicking(models.Model):
                 _logger.info('Picking validated: %s', picking.id)
             else:
                 _logger.warning('Picking not in "assigned" state: %s', picking.id)
-                continue
+                #continue
+                #comment mohammad for bypass delivery and create invoice
 
             # Retrieve the sale order using sale_order_id
             sale_order = temp_picking.sale_order_id
