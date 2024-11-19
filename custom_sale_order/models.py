@@ -77,7 +77,7 @@ class TempPicking(models.Model):
                 _logger.info('Picking validated: %s', picking.id)
             else:
                 _logger.warning('Picking not in "assigned" state: %s', picking.id)
-                #continue
+                continue
                 #comment mohammad for bypass delivery and create invoice
 
             # Retrieve the sale order using sale_order_id
@@ -121,6 +121,16 @@ class TempPicking(models.Model):
         if invoice.amount_residual > 0:
             # Search for the journal based on the invoice reference name
             journal = self.env['account.journal'].search([('name', '=', invoice.ref)], limit=1)
+
+            #Mohammad Add Payment Ref
+
+            concatenated_value = invoice.ref
+
+            extracted_values = concatenated_value.split('|')
+
+            journal1 = extracted_values[0]
+
+            invoice.write({'ref': journal1})
 
             # If no journal is found, search for the TAP journal
             if not journal:
@@ -298,11 +308,11 @@ class ProductTemplate(models.Model):
 class SaleOrder(models.Model):
     _inherit = 'sale.order'
 
-    picking_policy = fields.Selection([
-        ('direct', 'Deliver each product as soon as possible'),
-        ('one', 'Deliver all products at once'),
-        ('each', 'Deliver each product separately'),
-    ], string='Picking Policy', default='direct')
+    # picking_policy = fields.Selection([
+    #     ('direct', 'Deliver each product as soon as possible'),
+    #     ('one', 'Deliver all products at once'),
+    #     ('each', 'Deliver each product separately'),
+    # ], string='Picking Policy', default='direct')
 
     l10n_in_gst_treatment = fields.Selection([
         ('regular', 'Registered Business - Regular'),
@@ -496,6 +506,8 @@ class CustomerCreator(models.Model):
 
         commitment_date = order_data["sale_order"]["order_date"]
         payment_method = order_data["sale_order"]["payment_method"]
+        order_id = order_data["sale_order"]["payment_id"]
+        concatenated_value = f"{payment_method}|{order_id}"
         sale_id = order_data["sale_order"]["id"]
         customer_data = order_data["customer"]
         sale_voucher = order_data["sale_order"]["sale_order_no"]
@@ -549,7 +561,7 @@ class CustomerCreator(models.Model):
             'l10n_in_gst_treatment': 'consumer',
             'name': sale_voucher,
             'payment_term_id': 1,
-            'client_order_ref': payment_method,
+            'client_order_ref': concatenated_value,
             # 'user_id': salesperson_id.id  # Set the salesperson
         })
 
