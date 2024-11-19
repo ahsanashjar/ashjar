@@ -111,42 +111,6 @@ class TempPicking(models.Model):
             else:
                 _logger.error('Sale Order not found for Temp Picking: %s', temp_picking.id)
 
-    def _validate_temp_pickings1(self):
-        temp_pickings = self.env['temp.picking'].search([])
-        for temp_picking in temp_pickings:
-            picking = temp_picking.picking_id
-            # picking.button_validate()
-            # _logger.info('Picking validated: %s', picking.id)
-            if picking.state == 'assigned':
-                picking.button_validate()
-                _logger.info('Picking validated: %s', picking.id)
-            else:
-                _logger.warning('Picking not in "assigned" state: %s', picking.id)
-                continue
-
-            # Retrieve the sale order using sale_order_id
-            sale_order = temp_picking.sale_order_id
-            if sale_order:
-                # Create invoices for the sale order
-                user = sale_order.env['crm.team'].search([('name', '=', 'Online Sales')], limit=1)
-                sale_order.write({'team_id': user.id})
-                invoices = sale_order._create_invoices()
-
-                # journal update
-                journal = self.env['account.journal'].search([('name', '=', 'Online Sales')], limit=1)
-                if invoices:
-                    for invoice in invoices:
-                        # update journal
-                        invoice.write({'journal_id': journal.id})
-                        invoice.action_post()
-                        _logger.info('Invoice posted: %s', invoice.id)
-                        # Register and confirm the payment
-                        self.register_and_confirm_payment(invoice)
-                        temp_picking.unlink()  # Remove entry after validation
-                else:
-                    raise UserError("No invoices were created for Sale Order: %s" % sale_order.name)
-            else:
-                _logger.error('Sale Order not found for Temp Picking: %s', temp_picking.id)
 
     def register_and_confirm_payment(self, invoice):
         if invoice.state != 'posted':
@@ -157,6 +121,16 @@ class TempPicking(models.Model):
         if invoice.amount_residual > 0:
             # Search for the journal based on the invoice reference name
             journal = self.env['account.journal'].search([('name', '=', invoice.ref)], limit=1)
+
+            #Add Payment Reference in Invoice
+
+            concatenated_value = invoice.ref
+
+            extracted_values = concatenated_value.split('|')
+
+            journal1 = extracted_values[0]
+
+            invoice.write({'ref': journal1})
 
             # If no journal is found, search for the TAP journal
             if not journal:
@@ -333,11 +307,11 @@ class ProductTemplate(models.Model):
 class SaleOrder(models.Model):
     _inherit = 'sale.order'
 
-    picking_policy = fields.Selection([
-        ('direct', 'Deliver each product as soon as possible'),
-        ('one', 'Deliver all products at once'),
-        ('each', 'Deliver each product separately'),
-    ], string='Picking Policy', default='direct')
+    # picking_policy = fields.Selection([
+    #     ('direct', 'Deliver each product as soon as possible'),
+    #     ('one', 'Deliver all products at once'),
+    #     ('each', 'Deliver each product separately'),
+    # ], string='Picking Policy', default='direct')
 
     l10n_in_gst_treatment = fields.Selection([
         ('regular', 'Registered Business - Regular'),
@@ -530,6 +504,8 @@ class CustomerCreator(models.Model):
 
         commitment_date = order_data["sale_order"]["order_date"]
         payment_method = order_data["sale_order"]["payment_method"]
+        order_id = order_data["sale_order"]["payment_id"]
+        concatenated_value = f"{payment_method}|{order_id}"
         sale_id = order_data["sale_order"]["id"]
         customer_data = order_data["customer"]
         sale_voucher = order_data["sale_order"]["sale_order_no"]
@@ -583,7 +559,7 @@ class CustomerCreator(models.Model):
             'l10n_in_gst_treatment': 'consumer',
             'name': sale_voucher,
             'payment_term_id': 1,
-            'client_order_ref': payment_method,
+            'client_order_ref': concatenated_value,
             # 'user_id': salesperson_id.id  # Set the salesperson
         })
 
