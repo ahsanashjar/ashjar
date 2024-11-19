@@ -58,8 +58,96 @@ class TempPicking(models.Model):
     sale_order_id = fields.Many2one('sale.order', string='Sale Order')
     location_name = fields.Char(string='Location Name')
     ecom_sale_id = fields.Char(string='Ecom Sale Id')
+    picking_validated = fields.Boolean(string='Picking Validated', default=False)
+    invoice_processed = fields.Boolean(string='Invoice Processed', default=False)
 
     def _validate_temp_pickings(self):
+        temp_pickings = self.env['temp.picking'].search([])
+        for temp_picking in temp_pickings:
+            try:
+                picking = temp_picking.picking_id
+                location = self.env['stock.location'].search([('name', '=', temp_picking.location_name)], limit=1)
+
+                # Ensure the location exists
+                if not location:
+                    _logger.warning('Location "%s" not found for Temp Picking ID %s', temp_picking.location_name,
+                                    temp_picking.id)
+                    continue
+
+                picking.write({'location_id': location.id})
+
+                # Validate Picking if in 'assigned' state
+                print('picking.state', picking.state)
+                if picking.state == 'assigned':
+                    picking.button_validate()
+                    _logger.info('Picking validated: %s', picking.id)
+                    # temp_picking.write({'picking_validated': True})  # Custom field to track validation
+                elif picking.state == 'done':
+                    _logger.info('Picking already validated: %s', picking.id)
+                    temp_picking.write({'picking_validated': True})
+                else:
+                    _logger.warning('Skipping Picking ID %s; Current State: %s', picking.id, picking.state)
+
+                # Process Sale Order and Invoice
+                sale_order = temp_picking.sale_order_id
+                if sale_order:
+                    if not self._check_existing_invoices(sale_order):
+                        self._process_sale_order_and_invoice(sale_order, temp_picking)
+                    else:
+                        _logger.info('Invoice already exists for Sale Order: %s. Skipping invoice creation.',
+                                     sale_order.name)
+                        temp_picking.write({'invoice_processed': True})
+
+                # Unlink record if both delivery and invoice are validated
+                if temp_picking.picking_validated and temp_picking.invoice_processed:
+                    _logger.info('Unlinking Temp Picking ID %s after successful delivery and invoice.', temp_picking.id)
+                    temp_picking.unlink()
+
+            except Exception as e:
+                _logger.exception('Error processing Temp Picking ID %s: %s', temp_picking.id, str(e))
+
+    def _check_existing_invoices(self, sale_order):
+        """
+        Check if invoices already exist for the given sale order.
+        """
+
+        existing_invoices = self.env['account.move'].search([
+            ('invoice_origin', '=', sale_order.name),
+            ('move_type', '=', 'out_invoice'),
+            ('state', '!=', 'cancel'),
+            ('invoice_line_ids.sale_line_ids.order_id', '=', sale_order.id)  # Cross-check via invoice lines
+
+        ])
+        return bool(existing_invoices)
+
+    def _process_sale_order_and_invoice(self, sale_order, temp_picking):
+        crm_team = self.env['crm.team'].search([('name', '=', 'Online Sales')], limit=1)
+        journal = self.env['account.journal'].search([('name', '=', 'Online Sales')], limit=1)
+
+        if not crm_team or not journal:
+            raise UserError('CRM Team or Journal "Online Sales" not configured.')
+
+        sale_order.write({'team_id': crm_team.id})
+
+        invoices = sale_order._create_invoices()
+        if invoices:
+            for invoice in invoices:
+                invoice.write({'journal_id': journal.id})
+                invoice.action_post()
+                _logger.info('Invoice posted: %s', invoice.id)
+                self.register_and_confirm_payment(invoice)
+                share_link = self.env['account.move'].get_invoice_share_link(invoice.id)
+                if self.attach_single_sale_invoice(temp_picking.ecom_sale_id, share_link):
+                    _logger.info('Invoice Share Link: %s', share_link)
+                else:
+                    _logger.warning('Share Link not created for Invoice ID: %s', invoice.id)
+
+            # Mark invoice as processed in Temp Picking
+            temp_picking.write({'invoice_processed': True})  # Custom field to track invoice status
+        else:
+            _logger.warning('No invoices created for Sale Order: %s', sale_order.name)
+
+    def _validate_temp_pickings1(self):
         temp_pickings = self.env['temp.picking'].search([])
 
         for temp_picking in temp_pickings:
@@ -78,7 +166,7 @@ class TempPicking(models.Model):
             else:
                 _logger.warning('Picking not in "assigned" state: %s', picking.id)
                 continue
-                #comment mohammad for bypass delivery and create invoice
+                # comment mohammad for bypass delivery and create invoice
 
             # Retrieve the sale order using sale_order_id
             sale_order = temp_picking.sale_order_id
@@ -100,7 +188,7 @@ class TempPicking(models.Model):
                         self.register_and_confirm_payment(invoice)
                         invoice_id = invoice.id  # Replace with the actual invoice ID
                         share_link = self.env['account.move'].get_invoice_share_link(invoice_id)
-                        attach_invoice = self.attach_single_sale_invoice(ecom_sale_id,share_link)
+                        attach_invoice = self.attach_single_sale_invoice(ecom_sale_id, share_link)
 
                         if attach_invoice:
                             _logger.info('Invoice Share Link: %s', share_link)
@@ -122,7 +210,7 @@ class TempPicking(models.Model):
             # Search for the journal based on the invoice reference name
             journal = self.env['account.journal'].search([('name', '=', invoice.ref)], limit=1)
 
-            #Mohammad Add Payment Ref
+            # Mohammad Add Payment Ref
 
             concatenated_value = invoice.ref
 
@@ -169,6 +257,7 @@ class TempPicking(models.Model):
             return response.json()
         else:
             raise UserError(f"Failed to Attach Invoice: {response.status_code} {response.text}")
+
 
 class CustomModule(models.Model):
     _inherit = 'account.move'  # Or any other model in your custom module
@@ -218,9 +307,6 @@ class StockPicking(models.Model):
         # Call the API with dynamically fetched stock data
         update_stock = self.update_product_stock_qty_api(stock_data)
         print('update_stock', update_stock)
-
-
-
 
     def update_product_stock_qty_api(self, stock_data):
 
@@ -352,7 +438,8 @@ class CustomerCreator(models.Model):
         raise UserError('Please set up Odoo inventory with the Product Sku.')
 
     @api.model
-    def create_sale_order_lines(self, sale_order_id, sale_order_lines_data, discount_amount,charged_with_wallet_amount):
+    def create_sale_order_lines(self, sale_order_id, sale_order_lines_data, discount_amount,
+                                charged_with_wallet_amount):
         # print('sale_order_lines_data',sale_order_lines_data)
         SaleOrderLine = self.env['sale.order.line']
         discount_product_name = "Discount"  # Replace with your actual discount product name
@@ -570,7 +657,8 @@ class CustomerCreator(models.Model):
 
         # Create sale order lines using the JSON data
         # print('hi i am mohammad')
-        self.create_sale_order_lines(new_sale_order.id, order_data["sale_order_lines"], discount_amount,charged_with_wallet_amount)
+        self.create_sale_order_lines(new_sale_order.id, order_data["sale_order_lines"], discount_amount,
+                                     charged_with_wallet_amount)
 
         # create sale order
         new_sale_order.action_confirm()
@@ -654,7 +742,8 @@ class CustomerCreator(models.Model):
 
             # Create sale order lines using the JSON data
             print('hi i am mohammads 2')
-            self.create_sale_order_lines(new_sale_order.id, order_data["sale_order_lines"], discount_amount,charged_with_wallet_amount)
+            self.create_sale_order_lines(new_sale_order.id, order_data["sale_order_lines"], discount_amount,
+                                         charged_with_wallet_amount)
             update_flag_data = self.update_odoo_flag_api(sale_id)
 
             # Create record for the processed sale order
