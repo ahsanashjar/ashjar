@@ -62,7 +62,6 @@ class TempPicking(models.Model):
     invoice_processed = fields.Boolean(string='Invoice Processed', default=False)
 
     def _validate_temp_pickings(self):
-
         temp_pickings = self.env['temp.picking'].search([])
         for temp_picking in temp_pickings:
             try:
@@ -75,64 +74,17 @@ class TempPicking(models.Model):
                                     temp_picking.id)
                     continue
 
-                # Fetch the warehouse associated with the location
-                warehouse = self.env['stock.warehouse'].search([('view_location_id', 'parent_of', location.id)],
-                                                               limit=1)
-                if not warehouse:
-                    _logger.warning('Warehouse not found for location "%s" (Temp Picking ID %s)',
-                                    temp_picking.location_name,
-                                    temp_picking.id)
-                    continue
-                    # Fetch the Delivery Orders picking type for the warehouse
-                picking_type = self.env['stock.picking.type'].search([
-                    ('warehouse_id', '=', warehouse.id),
-                    ('code', '=', 'outgoing'),  # Explicitly look for Delivery Orders
-                    ('name', '=', 'Delivery Orders')  # Ensure the name matches "Delivery Orders"
-                ], limit=1)
-                if not picking_type:
-                    _logger.warning(
-                        'Delivery Orders picking type not found for warehouse "%s" (Temp Picking ID %s)',
-                        warehouse.name, temp_picking.id)
-                    continue
-                if picking.state != 'done' and picking.state != 'draft':
-                    picking.state = 'draft'  # Reset to draft if not already draft or done
-
-                    # Update the picking's location and picking type
-                    picking.write({
-                        'location_id': location.id,
-                        'picking_type_id': picking_type.id
-                    })
-
-                # picking.write({'location_id': location.id})
-                # Update the stock.move.line source location
-                for move_line in picking.move_line_ids:
-                    move_line.write({'location_id': location.id})
-                _logger.info('Updated location for Picking: %s', picking.location_id.name)
-                if picking.state != 'done':
-                    picking.action_assign()
-                    picking.state = 'assigned'
-                if picking.state == 'confirmed':  # Ensure it's ready for transfer
-                    picking.action_assign()
+                picking.write({'location_id': location.id})
 
                 # Validate Picking if in 'assigned' state
-                print('picking.state', picking.id)
                 print('picking.state', picking.state)
-                if picking.state == 'done':
-                    temp_picking.write({'picking_validated': True})
-
                 if picking.state == 'assigned':
-
-                    picking.action_assign()
                     picking.button_validate()
-
                     _logger.info('Picking validated: %s', picking.id)
                     # temp_picking.write({'picking_validated': True})  # Custom field to track validation
                 elif picking.state == 'done':
                     _logger.info('Picking already validated: %s', picking.id)
-
                     temp_picking.write({'picking_validated': True})
-
-
                 else:
                     _logger.warning('Skipping Picking ID %s; Current State: %s', picking.id, picking.state)
 
@@ -195,8 +147,6 @@ class TempPicking(models.Model):
         else:
             _logger.warning('No invoices created for Sale Order: %s', sale_order.name)
 
-    # Cron will reprocess records where picking is not validated or invoice is not processed
-
     def _validate_temp_pickings1(self):
         temp_pickings = self.env['temp.picking'].search([])
 
@@ -211,13 +161,12 @@ class TempPicking(models.Model):
             # picking.button_validate()
             # _logger.info('Picking validated: %s', picking.id)
             if picking.state == 'assigned':
-                print('here bossssssssss1')
-                print(picking.action_assign())
                 picking.button_validate()
                 _logger.info('Picking validated: %s', picking.id)
             else:
                 _logger.warning('Picking not in "assigned" state: %s', picking.id)
                 continue
+                # comment mohammad for bypass delivery and create invoice
 
             # Retrieve the sale order using sale_order_id
             sale_order = temp_picking.sale_order_id
@@ -260,9 +209,15 @@ class TempPicking(models.Model):
         if invoice.amount_residual > 0:
             # Search for the journal based on the invoice reference name
             journal = self.env['account.journal'].search([('name', '=', invoice.ref)], limit=1)
+
+            # Mohammad Add Payment Ref
+
             concatenated_value = invoice.ref
+
             extracted_values = concatenated_value.split('|')
+
             journal1 = extracted_values[0]
+
             invoice.write({'ref': journal1})
 
             # If no journal is found, search for the TAP journal
@@ -332,78 +287,10 @@ class StockPicking(models.Model):
         # Now call the API method to update stock quantity
 
         # Mohammad Malek 6 November Temporary Turn Off The Live Sync Update For Client Request
-        print(self.get_kit_boms_stock_as_json())
+        # self.update_stock_qty()
 
         # Return the result of the super call
         return res
-
-    def get_kit_boms_stock_as_json(self):
-        print('Calling get_kit_boms_stock_as_json...')
-        # Fetch all BOMs with type 'kit' (phantom) for the current company
-        current_company = 1
-        kit_boms = self.env['mrp.bom'].search([
-            ('type', '=', 'phantom'),
-            ('company_id', '=', current_company)
-        ])
-        if not kit_boms:
-            raise ValueError(f"No BOMs with type 'kit' found ")
-
-        # Fetch all warehouses belonging to the current company
-        warehouses = self.env['stock.warehouse'].search([('company_id', '=', current_company)])
-        if not warehouses:
-            raise ValueError(f"No warehouses found ")
-
-        # Initialize the final JSON structure
-        location_stock_data = []
-
-        for warehouse in warehouses:
-            # print(f"Processing warehouse: {warehouse.name}")
-
-            # Get the main stock location for this warehouse
-            location = warehouse.lot_stock_id
-
-            # Initialize data for this warehouse
-            warehouse_data = {
-                "location_name": location.name,
-                "parent_location_name": location.location_id.name,
-                "products": []
-            }
-
-            for bom in kit_boms:
-                # print(f"Processing BOM for kit: {bom.product_tmpl_id.display_name}")
-
-                # Initialize available quantity for this BOM as infinite
-                available_qty = float('inf')
-
-                for line in bom.bom_line_ids:
-                    component = line.product_id
-                    component_qty_needed = line.product_qty
-
-                    # Get the on-hand quantity of the component in this warehouse location
-                    component_qty_available = self.env['stock.quant']._get_available_quantity(component, location)
-
-                    # Calculate how many kits can be made with this component
-                    kits_possible_with_component = component_qty_available / component_qty_needed
-
-                    # Update the available_qty to the minimum of the current value and kits possible
-                    available_qty = min(available_qty, kits_possible_with_component)
-
-                # Add product data to the warehouse's product list
-                product_data = {
-                    # "product_id": bom.product_tmpl_id.display_name,
-                    "product_id": bom.product_id.default_code,
-                    "new_stock_qty": float(available_qty)  # Ensure value is serialized correctly
-                }
-                warehouse_data["products"].append(product_data)
-
-
-            # Append warehouse data to the final list
-            location_stock_data.append(warehouse_data)
-
-        # Return the JSON structure
-        # update_stock = self.update_product_stock_qty_api(location_stock_data)
-        # print('update_stock', update_stock)
-        return location_stock_data
 
     def update_stock_qty(self):
         stock_data = []
@@ -423,8 +310,7 @@ class StockPicking(models.Model):
 
     def update_product_stock_qty_api(self, stock_data):
 
-        #url = API_URL + "update_product_stock_qty"
-        url = API_URL + "update_product_stock_qty_wrt_dp"
+        url = API_URL + "update_product_stock_qty"
         body = {
             "secret_key": SECRETKEY,
             "stock_data": stock_data
@@ -709,7 +595,6 @@ class CustomerCreator(models.Model):
         payment_method = order_data["sale_order"]["payment_method"]
         order_id = order_data["sale_order"]["payment_id"]
         concatenated_value = f"{payment_method}|{order_id}"
-
         sale_id = order_data["sale_order"]["id"]
         customer_data = order_data["customer"]
         sale_voucher = order_data["sale_order"]["sale_order_no"]
