@@ -401,7 +401,7 @@ class StockPicking(models.Model):
 
             # Append warehouse data to the final list
             location_stock_data.append(warehouse_data)
-            _logger.info('location_stock_data: %s', location_stock_data)
+            # _logger.info('location_stock_data: %s', location_stock_data)
 
         # Return the JSON structure
         # update_stock = self.update_product_stock_qty_api(location_stock_data)
