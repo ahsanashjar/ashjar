@@ -334,11 +334,13 @@ class StockPicking(models.Model):
         # Mohammad Malek 6 November Temporary Turn Off The Live Sync Update For Client Request
         print(self.get_kit_boms_stock_as_json())
 
+
         # Return the result of the super call
         return res
 
     def get_kit_boms_stock_as_json(self):
         print('Calling get_kit_boms_stock_as_json...')
+        _logger.info('Calling get_kit_boms_stock_as_json...')
         # Fetch all BOMs with type 'kit' (phantom) for the current company
         current_company = 1
         kit_boms = self.env['mrp.bom'].search([
@@ -399,6 +401,7 @@ class StockPicking(models.Model):
 
             # Append warehouse data to the final list
             location_stock_data.append(warehouse_data)
+            _logger.info('location_stock_data: %s', location_stock_data)
 
         # Return the JSON structure
         # update_stock = self.update_product_stock_qty_api(location_stock_data)
