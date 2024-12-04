@@ -401,8 +401,8 @@ class StockPicking(models.Model):
             location_stock_data.append(warehouse_data)
 
         # Return the JSON structure
-        update_stock = self.update_product_stock_qty_api(location_stock_data)
-        print('update_stock', update_stock)
+        # update_stock = self.update_product_stock_qty_api(location_stock_data)
+        # print('update_stock', update_stock)
         return location_stock_data
 
     def update_stock_qty(self):
