@@ -407,8 +407,9 @@ class StockPicking(models.Model):
             # _logger.info('location_stock_data: %s', location_stock_data)
 
         # Return the JSON structure
-        # update_stock = self.update_product_stock_qty_api(location_stock_data)
-        # print('update_stock', update_stock)
+        update_stock = self.update_product_stock_qty_api(location_stock_data)
+        #print('update_stock', update_stock)
+        _logger.info('called update_stock Api: %s', update_stock)
         return location_stock_data
 
     def update_stock_qty(self):
