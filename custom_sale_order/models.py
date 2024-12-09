@@ -693,9 +693,10 @@ class CustomerCreator(models.Model):
     @api.model
     def create_sale_orders_from_data(self, active_id):
         print('active_id', active_id)
-
+        _logger.info('active_id: %s', active_id)
         # Fetch sales data from the API
         sales_data = self.fetch_sales_data_from_api(active_id)
+        _logger.info('sales_data: %s', sales_data)
         # print('sales_data', sales_data)
 
         # Ensure that sales_data contains data
