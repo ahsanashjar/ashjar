@@ -431,6 +431,7 @@ class StockPicking(models.Model):
     def update_product_stock_qty_api(self, stock_data):
 
         #url = API_URL + "update_product_stock_qty"
+        _logger.info('SECRETKEY: %s', SECRETKEY)
         url = API_URL + "update_product_stock_qty_wrt_dp"
         body = {
             "secret_key": SECRETKEY,
