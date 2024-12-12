@@ -430,6 +430,7 @@ class StockPicking(models.Model):
 
     def update_product_stock_qty_api(self, stock_data):
 
+        _logger.info('stock_data: %s', stock_data)
         #url = API_URL + "update_product_stock_qty"
         url = API_URL + "update_product_stock_qty_wrt_dp"
         body = {
