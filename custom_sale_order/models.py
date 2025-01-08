@@ -377,9 +377,9 @@ class StockPicking(models.Model):
             for bom in kit_boms:
                 # print(f"Processing BOM for kit: {bom.product_tmpl_id.display_name}")
 
+
                 # Initialize available quantity for this BOM as infinite
-                available_qty = 0
-                #available_qty = float('inf')
+                available_qty = float('inf')
 
                 for line in bom.bom_line_ids:
                     component = line.product_id
