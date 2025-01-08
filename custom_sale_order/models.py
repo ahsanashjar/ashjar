@@ -266,7 +266,7 @@ class TempPicking(models.Model):
             invoice.write({'ref': journal1})
 
             # If no journal is found, search for the TAP journal
-            if not journal:
+            if not journal1:
                 journal = self.env['account.journal'].search([('name', '=', 'TAP')], limit=1)
 
             # Create the payment register
