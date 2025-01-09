@@ -259,14 +259,14 @@ class TempPicking(models.Model):
         # Check if the remaining amount to be paid is greater than zero
         if invoice.amount_residual > 0:
             # Search for the journal based on the invoice reference name
-            journal = self.env['account.journal'].search([('name', '=', invoice.ref)], limit=1)
+
             concatenated_value = invoice.ref
             extracted_values = concatenated_value.split('|')
             journal1 = extracted_values[0]
             invoice.write({'ref': journal1})
-
+            journal = self.env['account.journal'].search([('name', '=', journal1)], limit=1)
             # If no journal is found, search for the TAP journal
-            if not journal1:
+            if not journal:
                 journal = self.env['account.journal'].search([('name', '=', 'TAP')], limit=1)
 
             # Create the payment register
