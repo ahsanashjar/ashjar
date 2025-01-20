@@ -170,7 +170,20 @@ class TempPicking(models.Model):
 
     def _process_sale_order_and_invoice(self, sale_order, temp_picking):
         crm_team = self.env['crm.team'].search([('name', '=', 'Online Sales')], limit=1)
-        journal = self.env['account.journal'].search([('name', '=', 'Online Sales')], limit=1)
+        location_to_journal = {
+            'Rabie Stock': 'Riyadh Customer Sales',
+            'Khobar Stock': 'Khobar Customer Sales',
+            'Jeddah Stock': 'Jeddah Customer Sales',
+        }
+        journal_name = location_to_journal.get(temp_picking.location_name)
+        _logger.info('journal_name', journal_name)
+        # If a matching journal name is found, search for the journal
+        if journal_name:
+            journal = self.env['account.journal'].search([('name', '=', journal_name)], limit=1)
+        else:
+            # Default to 'Online Sales' if no match is found
+            journal = self.env['account.journal'].search([('name', '=', 'Online Sales')], limit=1)
+            # journal = self.env['account.journal'].search([('name', '=', 'Online Sales')], limit=1)
 
         if not crm_team or not journal:
             raise UserError('CRM Team or Journal "Online Sales" not configured.')
