@@ -609,7 +609,7 @@ class CustomerCreator(models.Model):
                 'product_uom_qty': 1
             })
         delivery_charge = delivery_charge2
-        if delivery_charge1:
+        if delivery_charge:
             SaleOrderLine.create({
                 'order_id': sale_order_id,
                 'product_id': delivery_charges.id,
