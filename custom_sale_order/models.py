@@ -349,8 +349,6 @@ class StockPicking(models.Model):
         if self.state == 'done':
             self.get_kit_boms_stock_as_json()
 
-
-
         # Return the result of the super call
         return res
 
@@ -390,7 +388,6 @@ class StockPicking(models.Model):
             for bom in kit_boms:
                 # print(f"Processing BOM for kit: {bom.product_tmpl_id.display_name}")
 
-
                 # Initialize available quantity for this BOM as infinite
                 available_qty = float('inf')
 
@@ -415,14 +412,13 @@ class StockPicking(models.Model):
                 }
                 warehouse_data["products"].append(product_data)
 
-
             # Append warehouse data to the final list
             location_stock_data.append(warehouse_data)
             # _logger.info('location_stock_data: %s', location_stock_data)
 
         # Return the JSON structure
         update_stock = self.update_product_stock_qty_api(location_stock_data)
-        #print('update_stock', update_stock)
+        # print('update_stock', update_stock)
         _logger.info('called update_stock Api: %s', update_stock)
         return location_stock_data
 
@@ -445,7 +441,7 @@ class StockPicking(models.Model):
     def update_product_stock_qty_api(self, stock_data):
 
         _logger.info('stock_data: %s', stock_data)
-        #url = API_URL + "update_product_stock_qty"
+        # url = API_URL + "update_product_stock_qty"
         url = API_URL + "update_product_stock_qty_wrt_dp"
         body = {
             "secret_key": SECRETKEY,
@@ -580,8 +576,10 @@ class CustomerCreator(models.Model):
         SaleOrderLine = self.env['sale.order.line']
         discount_product_name = "Discount"  # Replace with your actual discount product name
         discount_wallet = "Wallet Discount"  # Replace with your actual discount product name
+        delivery_charge = "Delivery Charges"  # Replace with your actual discount product name
         discount_product = self.env['product.product'].search([('name', '=', discount_product_name)], limit=1)
         discount_product_wallet = self.env['product.product'].search([('name', '=', discount_wallet)], limit=1)
+        delivery_charge = self.env['product.product'].search([('name', '=', delivery_charge)], limit=1)
 
         for line_data in sale_order_lines_data:
             # ,line_data.get('product_color_name'),line_data.get('default_code')
@@ -608,6 +606,14 @@ class CustomerCreator(models.Model):
                 'order_id': sale_order_id,
                 'product_id': discount_product.id,
                 'price_unit': -discount_value,
+                'product_uom_qty': 1
+            })
+        delivery_charge1 = delivery_charge
+        if delivery_charge1:
+            SaleOrderLine.create({
+                'order_id': sale_order_id,
+                'product_id': delivery_charge1.id,
+                'price_unit': delivery_charge,
                 'product_uom_qty': 1
             })
 
