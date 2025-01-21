@@ -612,7 +612,7 @@ class CustomerCreator(models.Model):
         if delivery_charge1:
             SaleOrderLine.create({
                 'order_id': sale_order_id,
-                'product_id': delivery_charge1.id,
+                'product_id': delivery_charge.id,
                 'price_unit': delivery_charge,
                 'product_uom_qty': 1
             })
