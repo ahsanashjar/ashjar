@@ -571,7 +571,7 @@ class CustomerCreator(models.Model):
 
     @api.model
     def create_sale_order_lines(self, sale_order_id, sale_order_lines_data, discount_amount,
-                                charged_with_wallet_amount):
+                                charged_with_wallet_amount,delivery_charge2):
         # print('sale_order_lines_data',sale_order_lines_data)
         SaleOrderLine = self.env['sale.order.line']
         discount_product_name = "Discount"  # Replace with your actual discount product name
@@ -579,7 +579,7 @@ class CustomerCreator(models.Model):
         delivery_charge = "Delivery Charges"  # Replace with your actual discount product name
         discount_product = self.env['product.product'].search([('name', '=', discount_product_name)], limit=1)
         discount_product_wallet = self.env['product.product'].search([('name', '=', discount_wallet)], limit=1)
-        delivery_charge = self.env['product.product'].search([('name', '=', delivery_charge)], limit=1)
+        delivery_charges = self.env['product.product'].search([('name', '=', delivery_charge)], limit=1)
 
         for line_data in sale_order_lines_data:
             # ,line_data.get('product_color_name'),line_data.get('default_code')
@@ -608,11 +608,11 @@ class CustomerCreator(models.Model):
                 'price_unit': -discount_value,
                 'product_uom_qty': 1
             })
-        delivery_charge1 = delivery_charge
+        delivery_charge = delivery_charge2
         if delivery_charge1:
             SaleOrderLine.create({
                 'order_id': sale_order_id,
-                'product_id': delivery_charge.id,
+                'product_id': delivery_charges.id,
                 'price_unit': delivery_charge,
                 'product_uom_qty': 1
             })
@@ -744,6 +744,7 @@ class CustomerCreator(models.Model):
         sale_voucher = order_data["sale_order"]["sale_order_no"]
         discount_amount = order_data["sale_order"]["discount_amount"]
         charged_with_wallet_amount = order_data["sale_order"]["charged_with_wallet_amount"]
+        delivery_charge = order_data["sale_order"]["delivery_charge"]
         location_name = order_data["sale_order"]["location"]
 
         # print('commitment_date', commitment_date)
@@ -802,7 +803,7 @@ class CustomerCreator(models.Model):
         # Create sale order lines using the JSON data
         # print('hi i am mohammad')
         self.create_sale_order_lines(new_sale_order.id, order_data["sale_order_lines"], discount_amount,
-                                     charged_with_wallet_amount)
+                                     charged_with_wallet_amount,delivery_charge)
 
         # create sale order
         new_sale_order.action_confirm()
@@ -850,6 +851,7 @@ class CustomerCreator(models.Model):
             sale_voucher = order_data["sale_order"]["sale_order_no"]
             discount_amount = order_data["sale_order"]["discount_amount"]
             charged_with_wallet_amount = order_data["sale_order"]["charged_with_wallet_amount"]
+            delivery_charge = order_data["sale_order"]["delivery_charge"]
 
             # Ensure existing_customer is set correctly
             existing_customer = self.env['res.partner'].search([('mobile', '=', customer_data["mobile"])], limit=1)
@@ -887,7 +889,7 @@ class CustomerCreator(models.Model):
             # Create sale order lines using the JSON data
             print('hi i am mohammads 2')
             self.create_sale_order_lines(new_sale_order.id, order_data["sale_order_lines"], discount_amount,
-                                         charged_with_wallet_amount)
+                                         charged_with_wallet_amount,delivery_charge)
             update_flag_data = self.update_odoo_flag_api(sale_id)
 
             # Create record for the processed sale order
