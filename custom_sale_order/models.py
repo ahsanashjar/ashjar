@@ -616,11 +616,15 @@ class CustomerCreator(models.Model):
             product = self.create_product_if_not_exists(line_data.get('product_sku'))
             # product = self.create_product_variant_if_not_exists(line_data.get('product_name'), line_data.get('product_id'))
             print('md_product', product)
+            _logger.info('test1:%s ',product.get_product_multiline_description_sale())  # Expected sale order line name
+            _logger.info('test1: %s',product.display_name)  # Product display name
+            _logger.info('test1: %s',product.name)  # Raw product name
             SaleOrderLine.create({
                 'order_id': sale_order_id,
                 'product_id': product.id,
                 'product_uom_qty': line_data.get('quantity', 1),
                 'price_unit': line_data.get('unit_price', 0),
+                'name': product.get_product_multiline_description_sale() or product.display_name or product.name or "Unnamed Product",
             })
         charged_with_wallet = charged_with_wallet_amount
         if charged_with_wallet:
