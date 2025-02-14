@@ -604,10 +604,10 @@ class CustomerCreator(models.Model):
                                 charged_with_wallet_amount,delivery_charges49):
         # print('sale_order_lines_data',sale_order_lines_data)
         _logger.info('test1: %s', sale_order_id)  # Raw product name
-        _logger.info('test1: %s', sale_order_lines_data)  # Raw product name
-        _logger.info('test1: %s', product.name)  # Raw product name
-        _logger.info('test1: %s', product.name)  # Raw product name
-        _logger.info('test1: %s', product.name)  # Raw product name
+        _logger.info('test2: %s', sale_order_lines_data)  # Raw product name
+        _logger.info('test3: %s', discount_amount)  # Raw product name
+        _logger.info('test4: %s', charged_with_wallet_amount)  # Raw product name
+        _logger.info('test5: %s', delivery_charges49)  # Raw product name
         SaleOrderLine = self.env['sale.order.line']
         discount_product_name = "Discount"  # Replace with your actual discount product name
         discount_wallet = "Wallet Discount"  # Replace with your actual discount product name
