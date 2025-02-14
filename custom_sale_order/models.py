@@ -588,9 +588,9 @@ class CustomerCreator(models.Model):
             # product = self.create_product_variant_if_not_exists(line_data.get('product_name'), line_data.get('product_id'))
             print('md_product', product)
             _logger.info('product: %s', product)
-           # _logger.info('test1',product.get_product_multiline_description_sale())  # Expected sale order line name
-            _logger.info('test1',product.display_name)  # Product display name
-            _logger.info('test1',product.name)  # Raw product name
+            _logger.info('test1:%s ',product.get_product_multiline_description_sale())  # Expected sale order line name
+            _logger.info('test1: %s',product.display_name)  # Product display name
+            _logger.info('test1: %s',product.name)  # Raw product name
 
             SaleOrderLine.create({
                 'order_id': sale_order_id,
