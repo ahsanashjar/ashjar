@@ -632,7 +632,7 @@ class CustomerCreator(models.Model):
                 'name': product.get_product_multiline_description_sale() or product.display_name or product.name or "Unnamed Product",
             })
         charged_with_wallet = charged_with_wallet_amount
-        if charged_with_wallet:
+        if charged_with_wallet > 0:
             SaleOrderLine.create({
                 'order_id': sale_order_id,
                 'product_id': discount_product_wallet.id,
@@ -641,7 +641,7 @@ class CustomerCreator(models.Model):
                 'name': product.get_product_multiline_description_sale() or product.display_name or product.name or "Unnamed Product",
             })
         discount_value = discount_amount
-        if discount_value:
+        if discount_value > 0:
             SaleOrderLine.create({
                 'order_id': sale_order_id,
                 'product_id': discount_product.id,
