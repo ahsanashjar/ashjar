@@ -597,6 +597,8 @@ class CustomerCreator(models.Model):
                 'product_id': product.id,
                 'product_uom_qty': line_data.get('quantity', 1),
                 'price_unit': line_data.get('unit_price', 0),
+                'name': product.get_product_multiline_description_sale() or product.display_name or product.name or "Unnamed Product",
+
             })
         charged_with_wallet = charged_with_wallet_amount
         if charged_with_wallet:
