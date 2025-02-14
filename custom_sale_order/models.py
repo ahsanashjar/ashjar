@@ -638,7 +638,7 @@ class CustomerCreator(models.Model):
                 'product_id': discount_product_wallet.id,
                 'price_unit': -charged_with_wallet,
                 'product_uom_qty': 1,
-                'name': product.get_product_multiline_description_sale() or product.display_name or product.name or "Unnamed Product",
+                'name': discount_product_wallet.get_product_multiline_description_sale() or discount_product_wallet.display_name or discount_product_wallet.name or "Unnamed Product",
             })
         discount_value = discount_amount
         if discount_value > 0:
@@ -647,7 +647,7 @@ class CustomerCreator(models.Model):
                 'product_id': discount_product.id,
                 'price_unit': -discount_value,
                 'product_uom_qty': 1,
-                'name': product.get_product_multiline_description_sale() or product.display_name or product.name or "Unnamed Product",
+                'name': discount_product.get_product_multiline_description_sale() or discount_product.display_name or discount_product.name or "Unnamed Product",
             })
         delivery_charge = delivery_charges49
         if delivery_charge > 0:
@@ -656,7 +656,7 @@ class CustomerCreator(models.Model):
                 'product_id': delivery_charges.id,
                 'price_unit': delivery_charge,
                 'product_uom_qty': 1,
-                'name': product.get_product_multiline_description_sale() or product.display_name or product.name or "Unnamed Product",
+                'name': delivery_charges.get_product_multiline_description_sale() or delivery_charges.display_name or delivery_charges.name or "Unnamed Product",
             })
 
     # Api 1
