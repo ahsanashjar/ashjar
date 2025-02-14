@@ -631,15 +631,15 @@ class CustomerCreator(models.Model):
                 'price_unit': line_data.get('unit_price', 0),
                 'name': product.get_product_multiline_description_sale() or product.display_name or product.name or "Unnamed Product",
             })
-        charged_with_wallet = charged_with_wallet_amount
-        if charged_with_wallet > 0:
-            SaleOrderLine.create({
-                'order_id': sale_order_id,
-                'product_id': discount_product_wallet.id,
-                'price_unit': -charged_with_wallet,
-                'product_uom_qty': 1,
-                'name': discount_product_wallet.get_product_multiline_description_sale() or discount_product_wallet.display_name or discount_product_wallet.name or "Unnamed Product",
-            })
+        # charged_with_wallet = charged_with_wallet_amount
+        # if charged_with_wallet > 0:
+        #     SaleOrderLine.create({
+        #         'order_id': sale_order_id,
+        #         'product_id': discount_product_wallet.id,
+        #         'price_unit': -charged_with_wallet,
+        #         'product_uom_qty': 1,
+        #         'name': discount_product_wallet.get_product_multiline_description_sale() or discount_product_wallet.display_name or discount_product_wallet.name or "Unnamed Product",
+        #     })
         discount_value = discount_amount
         if discount_value > 0:
             SaleOrderLine.create({
