@@ -603,6 +603,11 @@ class CustomerCreator(models.Model):
     def create_sale_order_lines(self, sale_order_id, sale_order_lines_data, discount_amount,
                                 charged_with_wallet_amount,delivery_charges49):
         # print('sale_order_lines_data',sale_order_lines_data)
+        _logger.info('test1: %s', sale_order_id)  # Raw product name
+        _logger.info('test1: %s', sale_order_lines_data)  # Raw product name
+        _logger.info('test1: %s', product.name)  # Raw product name
+        _logger.info('test1: %s', product.name)  # Raw product name
+        _logger.info('test1: %s', product.name)  # Raw product name
         SaleOrderLine = self.env['sale.order.line']
         discount_product_name = "Discount"  # Replace with your actual discount product name
         discount_wallet = "Wallet Discount"  # Replace with your actual discount product name
@@ -632,7 +637,8 @@ class CustomerCreator(models.Model):
                 'order_id': sale_order_id,
                 'product_id': discount_product_wallet.id,
                 'price_unit': -charged_with_wallet,
-                'product_uom_qty': 1
+                'product_uom_qty': 1,
+                'name': product.get_product_multiline_description_sale() or product.display_name or product.name or "Unnamed Product",
             })
         discount_value = discount_amount
         if discount_value:
@@ -640,7 +646,8 @@ class CustomerCreator(models.Model):
                 'order_id': sale_order_id,
                 'product_id': discount_product.id,
                 'price_unit': -discount_value,
-                'product_uom_qty': 1
+                'product_uom_qty': 1,
+                'name': product.get_product_multiline_description_sale() or product.display_name or product.name or "Unnamed Product",
             })
         delivery_charge = delivery_charges49
         if delivery_charge > 0:
@@ -648,7 +655,8 @@ class CustomerCreator(models.Model):
                 'order_id': sale_order_id,
                 'product_id': delivery_charges.id,
                 'price_unit': delivery_charge,
-                'product_uom_qty': 1
+                'product_uom_qty': 1,
+                'name': product.get_product_multiline_description_sale() or product.display_name or product.name or "Unnamed Product",
             })
 
     # Api 1
