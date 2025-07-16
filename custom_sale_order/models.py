@@ -37,13 +37,12 @@ class ReturnPicking(models.Model):
                     'picking_id': picking.id
                     # Add any other necessary fields for the wizard
                 })
-
+            return_picking2.unlink()
             return_wizard = return_picking._create_returns()
             picking = self.env['stock.picking'].browse(return_wizard[0])
             # Validate the picking object
             if picking:
-                picking.button_validate()
-                return_picking2.unlink()
+                picking.button_validate()                
             else:
                 print(f"Could not find stock.picking with ID {return_wizard[0]}")
 
