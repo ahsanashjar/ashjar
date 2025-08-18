@@ -1,0 +1,74 @@
+<odoo>
+    <data>
+        <!-- Define the list view -->
+        <record id="view_customer_creator_list" model="ir.ui.view">
+            <field name="name">customer.creator.list</field>
+            <field name="model">customer.creator</field>
+            <field name="arch" type="xml">
+                <list string="Customer Creator">
+                    <field name="request_date"/>
+                    <field name="json_data"/>
+                    <field name="status"/>
+                </list>
+            </field>
+        </record>
+        <record id="view_customer_creator_list1" model="ir.ui.view">
+            <field name="name">customer.temp.pick</field>
+            <field name="model">temp.picking</field>
+            <field name="arch" type="xml">
+                <list string="Temp Picking">
+                    <field name="picking_id"/>
+                    <field name="sale_order_id"/>
+                    <field name="location_name"/>
+                    <field name="ecom_sale_id"/>
+                    <field name="picking_validated"/>
+                    <field name="invoice_processed"/>
+                </list>
+            </field>
+        </record>
+        <record id="view_customer_creator_list2" model="ir.ui.view">
+            <field name="name">return.pick</field>
+            <field name="model">return.picking</field>
+            <field name="arch" type="xml">
+                <list string="Temp Picking">
+                    <field name="picking_id"/>
+                </list>
+            </field>
+        </record>
+
+
+        <!-- Define the window action -->
+        <record id="action_customer_creator_list" model="ir.actions.act_window">
+            <field name="name">Sale Order Log View</field>
+            <field name="res_model">customer.creator</field>
+            <field name="view_mode">list,form</field>
+            <field name="view_id" ref="view_customer_creator_list"/>
+            <field name="target">current</field>
+        </record>
+        <record id="action_customer_creator_list1" model="ir.actions.act_window">
+            <field name="name">Custom Temp Pick Log</field>
+            <field name="res_model">temp.picking</field>
+            <field name="view_mode">list,form</field>
+            <field name="view_id" ref="view_customer_creator_list1"/>
+            <field name="target">current</field>
+        </record>
+        <record id="action_customer_creator_list2" model="ir.actions.act_window">
+            <field name="name">Custom Return Pick Log</field>
+            <field name="res_model">return.picking</field>
+            <field name="view_mode">list,form</field>
+            <field name="view_id" ref="view_customer_creator_list2"/>
+            <field name="target">current</field>
+        </record>
+
+        <!-- Define the menu item -->
+        <menuitem id="menu_customer_creator_view" name="Sale Order Log View" sequence="11"
+                  action="action_customer_creator_list" groups="base.group_no_one" parent="mail.mail_menu_technical"/>
+
+        <menuitem id="menu_customer_creator_view1" name="Temp Picking Log" sequence="12"
+                  action="action_customer_creator_list1" groups="base.group_no_one" parent="mail.mail_menu_technical"/>
+
+        <menuitem id="menu_customer_creator_view2" name="Return Picking Log" sequence="13"
+                  action="action_customer_creator_list2" groups="base.group_no_one" parent="mail.mail_menu_technical"/>
+
+    </data>
+</odoo>
