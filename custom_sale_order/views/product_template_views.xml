@@ -1,6 +1,6 @@
 <odoo>
     <data>
-        <!-- Inherit the product.template form view to add the ecom_product_id field -->
+        <!-- Inherit odoo18 the product.template form view to add the ecom_product_id field -->
         <record id="view_product_template_form_inherited" model="ir.ui.view">
             <field name="name">product.template.form.inherited</field>
             <field name="model">product.template</field>
