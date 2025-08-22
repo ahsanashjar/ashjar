@@ -8,12 +8,10 @@ from odoo import models, fields, api
 from odoo.exceptions import UserError
 
 # Define the global URL
-API_URL = "https://stage-admin.applligentdemo.com/api/v1/odoo/"
+# API_URL = "https://stage-admin.applligentdemo.com/api/v1/odoo/"
 
 SECRETKEY = "sk_e2a2d95a-34d4-4c58-8adf-21d7822f13f0"
-
-
-# API_URL = "https://console.ashjar.sa/api/v1/odoo/"
+API_URL = "https://console.ashjar.sa/api/v1/odoo/"
 
 
 class ReturnPicking(models.Model):
@@ -39,11 +37,12 @@ class ReturnPicking(models.Model):
                     # Add any other necessary fields for the wizard
                 })
             return_picking2.unlink()
-            return_wizard = return_picking.action_create_returns()
+            return_wizard = return_picking._create_returns()
             picking = self.env['stock.picking'].browse(return_wizard[0])
             # Validate the picking object
             if picking:
                 picking.button_validate()
+                # print(f"Validated stock.picking with ID {return_wizard[0]}")
             else:
                 print(f"Could not find stock.picking with ID {return_wizard[0]}")
 
@@ -63,7 +62,6 @@ class TempPicking(models.Model):
     invoice_processed = fields.Boolean(string='Invoice Processed', default=False)
 
     def _validate_temp_pickings(self):
-
         temp_pickings = self.env['temp.picking'].search([])
         for temp_picking in temp_pickings:
             try:
@@ -76,64 +74,17 @@ class TempPicking(models.Model):
                                     temp_picking.id)
                     continue
 
-                # Fetch the warehouse associated with the location
-                warehouse = self.env['stock.warehouse'].search([('view_location_id', 'parent_of', location.id)],
-                                                               limit=1)
-                if not warehouse:
-                    _logger.warning('Warehouse not found for location "%s" (Temp Picking ID %s)',
-                                    temp_picking.location_name,
-                                    temp_picking.id)
-                    continue
-                    # Fetch the Delivery Orders picking type for the warehouse
-                picking_type = self.env['stock.picking.type'].search([
-                    ('warehouse_id', '=', warehouse.id),
-                    ('code', '=', 'outgoing'),  # Explicitly look for Delivery Orders
-                    ('name', '=', 'Delivery Orders')  # Ensure the name matches "Delivery Orders"
-                ], limit=1)
-                if not picking_type:
-                    _logger.warning(
-                        'Delivery Orders picking type not found for warehouse "%s" (Temp Picking ID %s)',
-                        warehouse.name, temp_picking.id)
-                    continue
-                if picking.state != 'done' and picking.state != 'draft':
-                    picking.state = 'draft'  # Reset to draft if not already draft or done
-
-                    # Update the picking's location and picking type
-                    picking.write({
-                        'location_id': location.id,
-                        'picking_type_id': picking_type.id
-                    })
-
-                # picking.write({'location_id': location.id})
-                # Update the stock.move.line source location
-                for move_line in picking.move_line_ids:
-                    move_line.write({'location_id': location.id})
-                _logger.info('Updated location for Picking: %s', picking.location_id.name)
-                if picking.state != 'done':
-                    picking.action_assign()
-                    picking.state = 'assigned'
-                if picking.state == 'confirmed':  # Ensure it's ready for transfer
-                    picking.action_assign()
+                picking.write({'location_id': location.id})
 
                 # Validate Picking if in 'assigned' state
-                print('picking.state', picking.id)
                 print('picking.state', picking.state)
-                if picking.state == 'done':
-                    temp_picking.write({'picking_validated': True})
-
                 if picking.state == 'assigned':
-
-                    picking.action_assign()
                     picking.button_validate()
-
                     _logger.info('Picking validated: %s', picking.id)
                     # temp_picking.write({'picking_validated': True})  # Custom field to track validation
                 elif picking.state == 'done':
                     _logger.info('Picking already validated: %s', picking.id)
-
                     temp_picking.write({'picking_validated': True})
-
-
                 else:
                     _logger.warning('Skipping Picking ID %s; Current State: %s', picking.id, picking.state)
 
@@ -170,48 +121,6 @@ class TempPicking(models.Model):
         return bool(existing_invoices)
 
     def _process_sale_order_and_invoice(self, sale_order, temp_picking):
-        crm_team = self.env['crm.team'].search([('name', '=', 'Online Sales')], limit=1)
-        location_to_journal = {
-            'Rabie Stock': 'Riyadh Customer Sales',
-            'Khobar Stock': 'Khobar Customer Sales',
-            'Jeddah Stock': 'Jeddah Customer Sales',
-        }
-        journal_name = location_to_journal.get(temp_picking.location_name)
-        _logger.info('journal_name', journal_name)
-        # If a matching journal name is found, search for the journal
-        if journal_name:
-            journal = self.env['account.journal'].search([('name', '=', journal_name)], limit=1)
-        else:
-            # Default to 'Online Sales' if no match is found
-            # journal = self.env['account.journal'].search([('name', '=', 'Online Sales')], limit=1)
-            journal = self.env['account.journal'].search([('name', '=', 'Online Sales')], limit=1)
-
-        if not crm_team or not journal:
-            raise UserError('CRM Team or Journal "Online Sales" not configured.')
-
-        sale_order.write({'team_id': crm_team.id})
-
-        invoices = sale_order._create_invoices()
-        if invoices:
-            for invoice in invoices:
-                invoice.write({'journal_id': journal.id})
-                invoice.action_post()
-                _logger.info('Invoice posted: %s', invoice.id)
-                self.register_and_confirm_payment(invoice)
-                share_link = self.env['account.move'].get_invoice_share_link(invoice.id)
-                if self.attach_single_sale_invoice(temp_picking.ecom_sale_id, share_link):
-                    _logger.info('Invoice Share Link: %s', share_link)
-                else:
-                    _logger.warning('Share Link not created for Invoice ID: %s', invoice.id)
-
-            # Mark invoice as processed in Temp Picking
-            temp_picking.write({'invoice_processed': True})  # Custom field to track invoice status
-        else:
-            _logger.warning('No invoices created for Sale Order: %s', sale_order.name)
-
-    # Cron will reprocess records where picking is not validated or invoice is not processed
-
-    def _process_sale_order_and_invoice1(self, sale_order, temp_picking):
         crm_team = self.env['crm.team'].search([('name', '=', 'Online Sales')], limit=1)
         journal = self.env['account.journal'].search([('name', '=', 'Online Sales')], limit=1)
 
@@ -254,8 +163,6 @@ class TempPicking(models.Model):
             # picking.button_validate()
             # _logger.info('Picking validated: %s', picking.id)
             if picking.state == 'assigned':
-                print('here bossssssssss1')
-                print(picking.action_assign())
                 picking.button_validate()
                 _logger.info('Picking validated: %s', picking.id)
             else:
@@ -302,12 +209,18 @@ class TempPicking(models.Model):
         # Check if the remaining amount to be paid is greater than zero
         if invoice.amount_residual > 0:
             # Search for the journal based on the invoice reference name
+            journal = self.env['account.journal'].search([('name', '=', invoice.ref)], limit=1)
+
+            # Add Payment Reference in Invoice
 
             concatenated_value = invoice.ref
+
             extracted_values = concatenated_value.split('|')
+
             journal1 = extracted_values[0]
+
             invoice.write({'ref': journal1})
-            journal = self.env['account.journal'].search([('name', '=', journal1)], limit=1)
+
             # If no journal is found, search for the TAP journal
             if not journal:
                 journal = self.env['account.journal'].search([('name', '=', 'TAP')], limit=1)
@@ -371,88 +284,15 @@ class StockPicking(models.Model):
     def button_validate(self):
         # Call the super method first to ensure the stock picking is validated
         res = super(StockPicking, self).button_validate()
-
         # print('husen', res)
         # Now call the API method to update stock quantity
-
         # Mohammad Malek 6 November Temporary Turn Off The Live Sync Update For Client Request
-        # 09-12 comment for update live stock on admin end
-
-        # if self.state == 'done':
-        #     self.get_kit_boms_stock_as_json()
+        # self.update_stock_qty()
+        #
+        ## test
 
         # Return the result of the super call
         return res
-
-    def get_kit_boms_stock_as_json(self):
-        print('Calling get_kit_boms_stock_as_json...')
-        _logger.info('Calling get_kit_boms_stock_as_json...')
-        # Fetch all BOMs with type 'kit' (phantom) for the current company
-        current_company = 1
-        kit_boms = self.env['mrp.bom'].search([
-            ('type', '=', 'phantom'),
-            ('company_id', '=', current_company)
-        ])
-        if not kit_boms:
-            raise ValueError(f"No BOMs with type 'kit' found ")
-
-        # Fetch all warehouses belonging to the current company
-        warehouses = self.env['stock.warehouse'].search([('company_id', '=', current_company)])
-        if not warehouses:
-            raise ValueError(f"No warehouses found ")
-
-        # Initialize the final JSON structure
-        location_stock_data = []
-
-        for warehouse in warehouses:
-            # print(f"Processing warehouse: {warehouse.name}")
-
-            # Get the main stock location for this warehouse
-            location = warehouse.lot_stock_id
-
-            # Initialize data for this warehouse
-            warehouse_data = {
-                "location_name": location.name,
-                "parent_location_name": location.location_id.name,
-                "products": []
-            }
-
-            for bom in kit_boms:
-                # print(f"Processing BOM for kit: {bom.product_tmpl_id.display_name}")
-
-                # Initialize available quantity for this BOM as infinite
-                available_qty = float('inf')
-
-                for line in bom.bom_line_ids:
-                    component = line.product_id
-                    component_qty_needed = line.product_qty
-
-                    # Get the on-hand quantity of the component in this warehouse location
-                    component_qty_available = self.env['stock.quant']._get_available_quantity(component, location)
-
-                    # Calculate how many kits can be made with this component
-                    kits_possible_with_component = component_qty_available / component_qty_needed
-
-                    # Update the available_qty to the minimum of the current value and kits possible
-                    available_qty = min(available_qty, kits_possible_with_component)
-
-                # Add product data to the warehouse's product list
-                product_data = {
-                    # "product_id": bom.product_tmpl_id.display_name,
-                    "product_id": bom.product_id.default_code,
-                    "new_stock_qty": float(available_qty)  # Ensure value is serialized correctly
-                }
-                warehouse_data["products"].append(product_data)
-
-            # Append warehouse data to the final list
-            location_stock_data.append(warehouse_data)
-            # _logger.info('location_stock_data: %s', location_stock_data)
-
-        # Return the JSON structure
-        update_stock = self.update_product_stock_qty_api(location_stock_data)
-        # print('update_stock', update_stock)
-        _logger.info('called update_stock Api: %s', update_stock)
-        return location_stock_data
 
     def update_stock_qty(self):
         stock_data = []
@@ -472,8 +312,7 @@ class StockPicking(models.Model):
 
     def update_product_stock_qty_api(self, stock_data):
 
-        # url = API_URL + "update_product_stock_qty"
-        url = API_URL + "update_product_stock_qty_wrt_dp"
+        url = API_URL + "update_product_stock_qty"
         body = {
             "secret_key": SECRETKEY,
             "stock_data": stock_data
@@ -592,7 +431,6 @@ class CustomerCreator(models.Model):
     def create_product_if_not_exists(self, default_code):
         Product = self.env['product.product']
         # Search for existing product variant
-        print('product', default_code)
         product = Product.search([('default_code', '=', default_code)], limit=1)
         if product:
             return product
@@ -602,31 +440,24 @@ class CustomerCreator(models.Model):
 
     @api.model
     def create_sale_order_lines(self, sale_order_id, sale_order_lines_data, discount_amount,
-                                charged_with_wallet_amount, delivery_charges49):
+                                charged_with_wallet_amount):
         # print('sale_order_lines_data',sale_order_lines_data)
-
         SaleOrderLine = self.env['sale.order.line']
         discount_product_name = "Discount"  # Replace with your actual discount product name
         discount_wallet = "Wallet Discount"  # Replace with your actual discount product name
-        delivery_charge = "Standard Delivery Charges"  # Replace with your actual discount product name
         discount_product = self.env['product.product'].search([('name', '=', discount_product_name)], limit=1)
         discount_product_wallet = self.env['product.product'].search([('name', '=', discount_wallet)], limit=1)
-        delivery_charges = self.env['product.product'].search([('name', '=', delivery_charge)], limit=1)
 
         for line_data in sale_order_lines_data:
             # ,line_data.get('product_color_name'),line_data.get('default_code')
             product = self.create_product_if_not_exists(line_data.get('product_sku'))
             # product = self.create_product_variant_if_not_exists(line_data.get('product_name'), line_data.get('product_id'))
-            # print('md_product', product)
-            # _logger.info('test1:%s ',product.get_product_multiline_description_sale())  # Expected sale order line name
-            # _logger.info('test1: %s',product.display_name)  # Product display name
-            # _logger.info('test1: %s',product.name)  # Raw product name
+            print('md_product', product)
             SaleOrderLine.create({
                 'order_id': sale_order_id,
                 'product_id': product.id,
                 'product_uom_qty': line_data.get('quantity', 1),
                 'price_unit': line_data.get('unit_price', 0),
-                # 'name': product.get_product_multiline_description_sale() or product.display_name or product.name or "Unnamed Product",
             })
         charged_with_wallet = charged_with_wallet_amount
         if charged_with_wallet:
@@ -634,8 +465,7 @@ class CustomerCreator(models.Model):
                 'order_id': sale_order_id,
                 'product_id': discount_product_wallet.id,
                 'price_unit': -charged_with_wallet,
-                'product_uom_qty': 1,
-                # 'name': product.get_product_multiline_description_sale() or product.display_name or product.name or "Unnamed Product",
+                'product_uom_qty': 1
             })
         discount_value = discount_amount
         if discount_value:
@@ -643,17 +473,7 @@ class CustomerCreator(models.Model):
                 'order_id': sale_order_id,
                 'product_id': discount_product.id,
                 'price_unit': -discount_value,
-                'product_uom_qty': 1,
-                # 'name': product.get_product_multiline_description_sale() or product.display_name or product.name or "Unnamed Product",
-            })
-        delivery_charge = delivery_charges49
-        if delivery_charge > 0:
-            SaleOrderLine.create({
-                'order_id': sale_order_id,
-                'product_id': delivery_charges.id,
-                'price_unit': delivery_charge,
-                'product_uom_qty': 1,
-                # 'name': product.get_product_multiline_description_sale() or product.display_name or product.name or "Unnamed Product",
+                'product_uom_qty': 1
             })
 
     # Api 1
@@ -776,13 +596,11 @@ class CustomerCreator(models.Model):
         payment_method = order_data["sale_order"]["payment_method"]
         order_id = order_data["sale_order"]["payment_id"]
         concatenated_value = f"{payment_method}|{order_id}"
-
         sale_id = order_data["sale_order"]["id"]
         customer_data = order_data["customer"]
         sale_voucher = order_data["sale_order"]["sale_order_no"]
         discount_amount = order_data["sale_order"]["discount_amount"]
         charged_with_wallet_amount = order_data["sale_order"]["charged_with_wallet_amount"]
-        delivery_charge = order_data["sale_order"]["delivery_charge"]
         location_name = order_data["sale_order"]["location"]
 
         # print('commitment_date', commitment_date)
@@ -841,7 +659,7 @@ class CustomerCreator(models.Model):
         # Create sale order lines using the JSON data
         # print('hi i am mohammad')
         self.create_sale_order_lines(new_sale_order.id, order_data["sale_order_lines"], discount_amount,
-                                     charged_with_wallet_amount, delivery_charge)
+                                     charged_with_wallet_amount)
 
         # create sale order
         new_sale_order.action_confirm()
@@ -889,7 +707,6 @@ class CustomerCreator(models.Model):
             sale_voucher = order_data["sale_order"]["sale_order_no"]
             discount_amount = order_data["sale_order"]["discount_amount"]
             charged_with_wallet_amount = order_data["sale_order"]["charged_with_wallet_amount"]
-            delivery_charge = order_data["sale_order"]["delivery_charge"]
 
             # Ensure existing_customer is set correctly
             existing_customer = self.env['res.partner'].search([('mobile', '=', customer_data["mobile"])], limit=1)
@@ -927,7 +744,7 @@ class CustomerCreator(models.Model):
             # Create sale order lines using the JSON data
             print('hi i am mohammads 2')
             self.create_sale_order_lines(new_sale_order.id, order_data["sale_order_lines"], discount_amount,
-                                         charged_with_wallet_amount, delivery_charge)
+                                         charged_with_wallet_amount)
             update_flag_data = self.update_odoo_flag_api(sale_id)
 
             # Create record for the processed sale order
