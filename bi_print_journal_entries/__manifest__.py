@@ -2,7 +2,7 @@
 # Part of BrowseInfo. See LICENSE file for full copyright and licensing details.
 {
     'name': 'Print Journal Entries Report in Odoo',
-    'version': '18.0.0.0',
+    'version': '18.0',
     'category': 'Accounting',
     'license': 'OPL-1',
     'summary': 'Allow to print pdf report of Journal Entries.',
