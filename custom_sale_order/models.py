@@ -47,7 +47,7 @@ class ReturnPicking(models.Model):
                             'uom_id': move.product_uom.id,
                         })
 
-                # Step 3: Actually create the return picking (Odoo 18 → returns dict)
+                # Step 3: Actually create the return picking (Odoo 18 → returns dict).
                 action = wizard.action_create_returns()
                 new_picking_id = action.get("res_id")
                 new_picking = self.env['stock.picking'].browse(new_picking_id)
