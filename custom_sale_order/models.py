@@ -420,8 +420,8 @@ class StockPicking(models.Model):
         # Mohammad Malek 6 November Temporary Turn Off The Live Sync Update For Client Request
         # 09-12 comment for update live stock on admin end
 
-        # if self.state == 'done':
-        #     self.get_kit_boms_stock_as_json()
+        if self.state == 'done':
+            self.get_kit_boms_stock_as_json()
 
         # Return the result of the super call
         return res
