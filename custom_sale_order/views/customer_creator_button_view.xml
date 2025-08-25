@@ -1,7 +1,7 @@
 <!-- customer_creator_button_view.xml -->
 <odoo>
     <data>
-        <!-- Define a view for the button only -->
+        <!-- Define a view for the button only. -->
 
         <record id="view_customer_creator_button" model="ir.ui.view">
             <field name="name">customer.creator.button.view</field>

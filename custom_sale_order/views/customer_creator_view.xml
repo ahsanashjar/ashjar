@@ -20,15 +20,15 @@
             </field>
         </record>
 
-        <record id="view_customer_creator_tree" model="ir.ui.view">
-            <field name="name">customer.creator.tree</field>
+        <record id="view_customer_creator_list" model="ir.ui.view">
+            <field name="name">customer.creator.list</field>
             <field name="model">customer.creator</field>
             <field name="arch" type="xml">
-                <tree string="Customer Creator">
+                <list string="Customer Creator">
                     <field name="request_date"/>
                     <field name="json_data"/>
                     <field name="status"/>
-                </tree>
+                </list>
             </field>
         </record>
 
@@ -41,16 +41,16 @@
             <field name="target">current</field>
         </record>
 
-        <record id="action_customer_creator_tree" model="ir.actions.act_window">
+        <record id="action_customer_creator_list" model="ir.actions.act_window">
             <field name="name">Customer Creator</field>
             <field name="res_model">customer.creator</field>
-            <field name="view_mode">tree</field>
-            <field name="view_id" ref="view_customer_creator_tree"/>
+            <field name="view_mode">list</field>
+            <field name="view_id" ref="view_customer_creator_list"/>
         </record>
 
         <!-- Update the menu item to point to the new action -->
         <menuitem id="menu_customer_creator_root" name="Sale Order Creator" sequence="10" parent="sale.sale_order_menu"/>
         <menuitem id="menu_customer_creator" name="Customer Creator" parent="menu_customer_creator_root" action="action_customer_creator_button"/>
-        <menuitem id="menu_customer_creator_tree" name="Customer Creator View" parent="menu_customer_creator_root" action="action_customer_creator_tree"/>
+        <menuitem id="menu_customer_creator_list" name="Customer Creator View" parent="menu_customer_creator_root" action="action_customer_creator_list"/>
     </data>
 </odoo>

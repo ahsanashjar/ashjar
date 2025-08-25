@@ -8,9 +8,10 @@ from odoo import models, fields, api
 from odoo.exceptions import UserError
 
 # Define the global URL
-# API_URL = "https://stage-admin.applligentdemo.com/api/v1/odoo/"
+#API_URL = "https://stage-admin.applligentdemo.com/api/v1/odoo/"
 
 SECRETKEY = "sk_e2a2d95a-34d4-4c58-8adf-21d7822f13f0"
+
 
 API_URL = "https://console.ashjar.sa/api/v1/odoo/"
 
@@ -22,6 +23,48 @@ class ReturnPicking(models.Model):
     picking_id = fields.Many2one('stock.picking', string='Picking')
 
     def return_pick(self):
+        return_pickings = self.env['return.picking'].search([])
+        for return_picking2 in return_pickings:
+            picking = return_picking2.picking_id
+
+            if picking.state == 'done':
+                # Step 1: Create wizard with proper context
+                wizard = self.env['stock.return.picking'].with_context(
+                    active_id=picking.id,
+                    active_model='stock.picking',
+                ).create({
+                    'picking_id': picking.id,
+                })
+
+                # Step 2: Add at least one return line (force qty = 1 for demo)
+                for move in picking.move_ids:
+                    if move.quantity > 0:  # 👈 should check quantity_done
+                        self.env['stock.return.picking.line'].create({
+                            'wizard_id': wizard.id,
+                            'product_id': move.product_id.id,
+                            'quantity': 1,  # 👈 force default qty
+                            'move_id': move.id,
+                            'uom_id': move.product_uom.id,
+                        })
+
+                # Step 3: Actually create the return picking (Odoo 18 → returns dict)....
+                action = wizard.action_create_returns()
+                new_picking_id = action.get("res_id")
+                new_picking = self.env['stock.picking'].browse(new_picking_id)
+
+                if new_picking:
+                    new_picking.button_validate()
+                    _logger.info(
+                        "Return picking %s created & validated for original %s",
+                        new_picking.name, picking.name
+                    )
+                else:
+                    _logger.warning("No return picking created for %s", picking.name)
+
+            # cleanup
+            return_picking2.unlink()
+
+    def return_pick2(self):
         return_pickings = self.env['return.picking'].search([])
         for return_picking2 in return_pickings:
             picking_id = return_picking2.picking_id.id
@@ -38,7 +81,7 @@ class ReturnPicking(models.Model):
                     # Add any other necessary fields for the wizard
                 })
             return_picking2.unlink()
-            return_wizard = return_picking._create_returns()
+            return_wizard = return_picking.action_create_returns()
             picking = self.env['stock.picking'].browse(return_wizard[0])
             # Validate the picking object
             if picking:
@@ -182,8 +225,8 @@ class TempPicking(models.Model):
             journal = self.env['account.journal'].search([('name', '=', journal_name)], limit=1)
         else:
             # Default to 'Online Sales' if no match is found
-            journal = self.env['account.journal'].search([('name', '=', 'Online Sales')], limit=1)
             # journal = self.env['account.journal'].search([('name', '=', 'Online Sales')], limit=1)
+            journal = self.env['account.journal'].search([('name', '=', 'Online Sales')], limit=1)
 
         if not crm_team or not journal:
             raise UserError('CRM Team or Journal "Online Sales" not configured.')
@@ -601,7 +644,7 @@ class CustomerCreator(models.Model):
 
     @api.model
     def create_sale_order_lines(self, sale_order_id, sale_order_lines_data, discount_amount,
-                                charged_with_wallet_amount,delivery_charges49):
+                                charged_with_wallet_amount, delivery_charges49):
         # print('sale_order_lines_data',sale_order_lines_data)
 
         SaleOrderLine = self.env['sale.order.line']
@@ -840,7 +883,7 @@ class CustomerCreator(models.Model):
         # Create sale order lines using the JSON data
         # print('hi i am mohammad')
         self.create_sale_order_lines(new_sale_order.id, order_data["sale_order_lines"], discount_amount,
-                                     charged_with_wallet_amount,delivery_charge)
+                                     charged_with_wallet_amount, delivery_charge)
 
         # create sale order
         new_sale_order.action_confirm()
@@ -926,7 +969,7 @@ class CustomerCreator(models.Model):
             # Create sale order lines using the JSON data
             print('hi i am mohammads 2')
             self.create_sale_order_lines(new_sale_order.id, order_data["sale_order_lines"], discount_amount,
-                                         charged_with_wallet_amount,delivery_charge)
+                                         charged_with_wallet_amount, delivery_charge)
             update_flag_data = self.update_odoo_flag_api(sale_id)
 
             # Create record for the processed sale order
