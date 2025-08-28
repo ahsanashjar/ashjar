@@ -412,6 +412,63 @@ class StockPicking(models.Model):
     _inherit = 'stock.picking'
 
     def button_validate(self):
+        res = super(StockPicking, self).button_validate()
+
+        if self.state == 'done':
+            # Get the warehouse of this picking
+            warehouse = self.picking_type_id.warehouse_id
+            stock_location = warehouse.lot_stock_id
+
+            _logger.info("Picking Warehouse: %s", warehouse.name)
+            self.get_kit_boms_stock_as_json(warehouse, stock_location)
+
+        return res
+
+    def get_kit_boms_stock_as_json(self, warehouse, stock_location):
+        _logger.info("Processing stock for warehouse: %s | location: %s", warehouse.name, stock_location.display_name)
+
+        current_company = self.company_id.id
+        kit_boms = self.env['mrp.bom'].search([
+            ('type', '=', 'phantom'),
+            ('company_id', '=', current_company)
+        ])
+        if not kit_boms:
+            raise ValueError("No BOMs with type 'kit' found")
+
+        # Only use the single affected warehouse
+        warehouse_data = {
+            "location_name": stock_location.name,
+            "parent_location_name": stock_location.location_id.name if stock_location.location_id else None,
+            "products": []
+        }
+
+        for bom in kit_boms:
+            available_qty = float('inf')
+
+            for line in bom.bom_line_ids:
+                component = line.product_id
+                component_qty_needed = line.product_qty
+
+                component_qty_available = self.env['stock.quant']._get_available_quantity(component, stock_location)
+                kits_possible_with_component = component_qty_available / component_qty_needed if component_qty_needed else 0
+
+                available_qty = min(available_qty, kits_possible_with_component)
+
+            product_data = {
+                "product_id": bom.product_id.default_code,
+                "new_stock_qty": float(available_qty)
+            }
+            warehouse_data["products"].append(product_data)
+
+        location_stock_data = [warehouse_data]
+        _logger.info('location_stock_data: %s', location_stock_data)
+
+        update_stock = self.update_product_stock_qty_api(location_stock_data)
+        _logger.info("called update_stock Api: %s", update_stock)
+
+        return location_stock_data
+
+    def button_validate1(self):
         # Call the super method first to ensure the stock picking is validated
         res = super(StockPicking, self).button_validate()
 
@@ -427,7 +484,7 @@ class StockPicking(models.Model):
         # Return the result of the super call
         return res
 
-    def get_kit_boms_stock_as_json(self):
+    def get_kit_boms_stock_as_json1(self):
         # print('Calling get_kit_boms_stock_as_json...')
         _logger.info('Calling get_kit_boms_stock_as_json...')
         # Fetch all BOMs with type 'kit' (phantom) for the current company
