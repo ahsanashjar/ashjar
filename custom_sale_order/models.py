@@ -461,7 +461,8 @@ class StockPicking(models.Model):
             warehouse_data["products"].append(product_data)
 
         location_stock_data = [warehouse_data]
-        _logger.info('location_stock_data: %s', location_stock_data)
+        # _logger.info('location_stock_data: %s', location_stock_data)
+        _logger.info('started api calling', location_stock_data)
 
         update_stock = self.update_product_stock_qty_api(location_stock_data)
         _logger.info("called update_stock Api: %s", update_stock)
