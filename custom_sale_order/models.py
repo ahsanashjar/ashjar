@@ -428,7 +428,7 @@ class StockPicking(models.Model):
         return res
 
     def get_kit_boms_stock_as_json(self):
-        print('Calling get_kit_boms_stock_as_json...')
+        # print('Calling get_kit_boms_stock_as_json...')
         _logger.info('Calling get_kit_boms_stock_as_json...')
         # Fetch all BOMs with type 'kit' (phantom) for the current company
         current_company = 1
@@ -489,9 +489,10 @@ class StockPicking(models.Model):
 
             # Append warehouse data to the final list
             location_stock_data.append(warehouse_data)
-            _logger.info('location_stock_data: %s', location_stock_data)
+            # _logger.info('location_stock_data: %s', location_stock_data)
 
         # Return the JSON structure
+        _logger.info('started calling api update_stock Api')
         update_stock = self.update_product_stock_qty_api(location_stock_data)
         # print('update_stock', update_stock)
         _logger.info('called update_stock Api: %s', update_stock)
