@@ -8,7 +8,7 @@ from odoo import models, fields, api
 from odoo.exceptions import UserError
 
 # Define the global URL
-# API_URL = "https://stage-admin.applligentdemo.com/api/v1/odoo/"
+#API_URL = "https://stage-admin.applligentdemo.com/api/v1/odoo/"
 API_URL = "https://stage-portal.sendgifts.sa/api/v1/odoo/"
 
 SECRETKEY = "sk_e2a2d95a-34d4-4c58-8adf-21d7822f13f0"
@@ -442,39 +442,26 @@ class StockPicking(models.Model):
             "products": []
         }
 
-        # for bom in kit_boms:
-        #     available_qty = float('inf')
-        #
-        #     for line in bom.bom_line_ids:
-        #         component = line.product_id
-        #         component_qty_needed = line.product_qty
-        #
-        #         component_qty_available = self.env['stock.quant']._get_available_quantity(component, stock_location)
-        #         kits_possible_with_component = component_qty_available / component_qty_needed if component_qty_needed else 0
-        #
-        #         available_qty = min(available_qty, kits_possible_with_component)
-        #
-        #     product_data = {
-        #         "product_id": bom.product_id.default_code,
-        #         "new_stock_qty": float(available_qty)
-        #     }
-        #     warehouse_data["products"].append(product_data)
-        #
-        # location_stock_data = [warehouse_data]
-        # # _logger.info('location_stock_data: %s', location_stock_data)
-        products = self.env['product.product'].with_context(location=stock_location.id).search([])
+        for bom in kit_boms:
+            available_qty = float('inf')
 
-        for product in products:
+            for line in bom.bom_line_ids:
+                component = line.product_id
+                component_qty_needed = line.product_qty
+
+                component_qty_available = self.env['stock.quant']._get_available_quantity(component, stock_location)
+                kits_possible_with_component = component_qty_available / component_qty_needed if component_qty_needed else 0
+
+                available_qty = min(available_qty, kits_possible_with_component)
+
             product_data = {
-                "product_id": product.default_code or product.id,
-                "new_stock_qty": float(product.qty_available),  # On-hand at this location
-                "free_stock_qty": float(product.free_qty),  # Free stock (not reserved)
-                "virtual_stock_qty": float(product.virtual_available),  # Forecasted stock
+                "product_id": bom.product_id.default_code,
+                "new_stock_qty": float(available_qty)
             }
             warehouse_data["products"].append(product_data)
 
         location_stock_data = [warehouse_data]
-        _logger.info('location_stock_data: %s', location_stock_data)
+        # _logger.info('location_stock_data: %s', location_stock_data)
         _logger.info('started api calling')
 
         update_stock = self.update_product_stock_qty_api(location_stock_data)
