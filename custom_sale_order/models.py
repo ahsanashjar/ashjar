@@ -459,33 +459,19 @@ class StockPicking(models.Model):
         #         "new_stock_qty": float(available_qty)
         #     }
         #     warehouse_data["products"].append(product_data)
-        for bom in kit_boms:
-            available_qty = float('inf')
+        #
+        # location_stock_data = [warehouse_data]
+        # # _logger.info('location_stock_data: %s', location_stock_data)
+        products = self.env['product.product'].with_context(location=stock_location.id).search([])
 
-            for line in bom.bom_line_ids:
-                component = line.product_id
-                component_qty_needed = line.product_qty
-
-                component_qty_available = component.with_context(
-                    location=stock_location.id,
-                    compute_child=True
-                ).qty_available
-
-                kits_possible_with_component = (
-                    component_qty_available / component_qty_needed
-                    if component_qty_needed else 0
-                )
-
-                available_qty = min(available_qty, kits_possible_with_component)
-
-            # Loop over all products this BOM applies to
-            bom_products = bom.product_id or bom.product_tmpl_id.product_variant_ids
-            for product in (bom_products if bom.product_id else bom.product_tmpl_id.product_variant_ids):
-                product_data = {
-                    "product_id": product.default_code,
-                    "new_stock_qty": float(available_qty)
-                }
-                warehouse_data["products"].append(product_data)
+        for product in products:
+            product_data = {
+                "product_id": product.default_code or product.id,
+                "new_stock_qty": float(product.qty_available),  # On-hand at this location
+                "free_stock_qty": float(product.free_qty),  # Free stock (not reserved)
+                "virtual_stock_qty": float(product.virtual_available),  # Forecasted stock
+            }
+            warehouse_data["products"].append(product_data)
 
         location_stock_data = [warehouse_data]
         _logger.info('location_stock_data: %s', location_stock_data)
