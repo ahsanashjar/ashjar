@@ -459,7 +459,6 @@ class StockPicking(models.Model):
         #         "new_stock_qty": float(available_qty)
         #     }
         #     warehouse_data["products"].append(product_data)
-
         for bom in kit_boms:
             available_qty = float('inf')
 
@@ -467,7 +466,6 @@ class StockPicking(models.Model):
                 component = line.product_id
                 component_qty_needed = line.product_qty
 
-                # Use Odoo’s built-in On Hand qty
                 component_qty_available = component.with_context(
                     location=stock_location.id,
                     compute_child=True
@@ -480,11 +478,14 @@ class StockPicking(models.Model):
 
                 available_qty = min(available_qty, kits_possible_with_component)
 
-            product_data = {
-                "product_id": bom.product_id.default_code,
-                "new_stock_qty": float(available_qty)
-            }
-            warehouse_data["products"].append(product_data)
+            # Loop over all products this BOM applies to
+            bom_products = bom.product_id or bom.product_tmpl_id.product_variant_ids
+            for product in (bom_products if bom.product_id else bom.product_tmpl_id.product_variant_ids):
+                product_data = {
+                    "product_id": product.default_code,
+                    "new_stock_qty": float(available_qty)
+                }
+                warehouse_data["products"].append(product_data)
 
         location_stock_data = [warehouse_data]
         _logger.info('location_stock_data: %s', location_stock_data)
