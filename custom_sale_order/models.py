@@ -1175,3 +1175,67 @@ class StockQuant(models.Model):
         locations = self.location_id
         self.live_stock(self)
         return res
+
+
+class PosOrder(models.Model):
+    _inherit = "pos.order"
+
+    def live_stock(self, locations):
+        # print('locations', location)
+
+        for location in locations:
+            _logger.info("Start Processing Send Stock")
+            _logger.info(location.name)
+            warehouse_data = {
+                "location_name": location.name,
+                "products": []
+            }
+
+            products = self.env['product.product'].with_context(location=location.location_id.id).search([
+                ('default_code', '!=', False)
+            ])
+
+            for product in products:
+                # _logger.info(product.default_code)
+                product_data = {
+                    "product_id": product.default_code or product.id,
+                    "new_stock_qty": float(product.qty_available),  # On-hand at this location
+                }
+                warehouse_data["products"].append(product_data)
+
+            location_stock_data = [warehouse_data]
+            #_logger.info('location_stock_data: %s', location_stock_data)
+            # _logger.info('started api calling from stock.scrap')
+            apistatus = StockPicking.update_product_stock_qty_api(self, location_stock_data)
+            _logger.info("called update_stock Api from stock.scrap: %s", apistatus)
+
+        return True
+
+    def _create_order_picking(self):
+        picking = super()._create_order_picking()
+
+        if picking:
+            for p in picking:
+                _logger.info("✅ Created Picking %s (state: %s)", p.name, p.state)
+        # else:
+            # _logger.warning(
+            #     "⚠️ No picking created for POS Order %s. Picking Type: %s",
+            #     self.name,
+            #     self.session_id.config_id.picking_type_id.display_name or "Not Set",
+            #     self.session_id.config_id or "Not Set",
+            # )
+
+        # 🔎 Check all linked pickings (in case it was already created before)
+        for p in self.picking_ids:
+            # _logger.info(
+            #     "ℹ️ POS Order %s already has Picking %s (state: %s)",
+            #     self.name,
+            #     p.name,
+            #     p.state,
+            #     p.location_id,
+            # )
+
+            locations = p.location_id
+            self.live_stock(locations)
+
+        return picking
