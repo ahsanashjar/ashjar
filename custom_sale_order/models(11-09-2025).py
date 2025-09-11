@@ -417,68 +417,6 @@ class StockPicking(models.Model):
         if self.state == 'done':
             # Get the warehouse of this picking
             warehouse = self.picking_type_id.warehouse_id
-            pick_code = self.picking_type_code
-            lock_dest = self.location_dest_id
-            _logger.info("Picking Code: %s", self.picking_type_code)
-            _logger.info("lock_dest: %s", lock_dest.name)
-            stock_location = warehouse.lot_stock_id
-
-            _logger.info("Picking Warehouse: %s", warehouse.name)
-            self.get_kit_boms_stock_as_json(warehouse, stock_location, pick_code, lock_dest)
-
-        return res
-
-    def get_kit_boms_stock_as_json(self, warehouse, stock_location, pick_code, lock_dest):
-        if pick_code == 'internal':
-            warehouse_data = {
-                "location_name": lock_dest.name,
-                "products": []
-            }
-            products = self.env['product.product'].with_context(location=lock_dest.name).search([])
-            for product in products:
-                product_data = {
-                    "product_id": product.default_code or product.id,
-                    "new_stock_qty": float(product.qty_available),  # On-hand at this location
-                }
-                warehouse_data["products"].append(product_data)
-
-            location_stock_data = [warehouse_data]
-            _logger.info('location_stock_data: %s', location_stock_data)
-            _logger.info('started api calling')
-            update_stock = self.update_product_stock_qty_api(location_stock_data)
-            _logger.info("called update_stock Api: %s", update_stock)
-
-        warehouse_data = {
-            "location_name": stock_location.name,
-            "products": []
-        }
-
-        products = self.env['product.product'].with_context(location=stock_location.id).search([])
-
-        for product in products:
-            product_data = {
-                "product_id": product.default_code or product.id,
-                "new_stock_qty": float(product.qty_available),  # On-hand at this location
-                # "free_stock_qty": float(product.free_qty),  # Free stock (not reserved)
-                # "virtual_stock_qty": float(product.virtual_available),  # Forecasted stock
-            }
-            warehouse_data["products"].append(product_data)
-
-        location_stock_data = [warehouse_data]
-        _logger.info('location_stock_data: %s', location_stock_data)
-        _logger.info('started api calling')
-
-        update_stock = self.update_product_stock_qty_api(location_stock_data)
-        _logger.info("called update_stock Api: %s", update_stock)
-
-        return location_stock_data
-
-    def button_validate1(self):
-        res = super(StockPicking, self).button_validate()
-
-        if self.state == 'done':
-            # Get the warehouse of this picking
-            warehouse = self.picking_type_id.warehouse_id
             stock_location = warehouse.lot_stock_id
 
             _logger.info("Picking Warehouse: %s", warehouse.name)
@@ -486,7 +424,7 @@ class StockPicking(models.Model):
 
         return res
 
-    def get_kit_boms_stock_as_json1(self, warehouse, stock_location):
+    def get_kit_boms_stock_as_json(self, warehouse, stock_location):
         _logger.info("Processing stock for warehouse: %s | location: %s", warehouse.name, stock_location.display_name)
 
         current_company = self.company_id.id
@@ -542,6 +480,138 @@ class StockPicking(models.Model):
         update_stock = self.update_product_stock_qty_api(location_stock_data)
         _logger.info("called update_stock Api: %s", update_stock)
 
+        return location_stock_data
+
+    def get_kit_boms_stock_as_json2(self, warehouse, stock_location):
+        _logger.info("Processing stock for warehouse: %s | location: %s", warehouse.name, stock_location.display_name)
+
+        current_company = self.company_id.id
+        kit_boms = self.env['mrp.bom'].search([
+            ('type', '=', 'phantom'),
+            ('company_id', '=', current_company)
+        ])
+        if not kit_boms:
+            raise ValueError("No BOMs with type 'kit' found")
+
+        # Only use the single affected warehouse
+        warehouse_data = {
+            "location_name": stock_location.name,
+            "parent_location_name": stock_location.location_id.name if stock_location.location_id else None,
+            "products": []
+        }
+
+        for bom in kit_boms:
+            available_qty = float('inf')
+
+            for line in bom.bom_line_ids:
+                component = line.product_id
+                component_qty_needed = line.product_qty
+
+                component_qty_available = self.env['stock.quant']._get_available_quantity(component, stock_location)
+                kits_possible_with_component = component_qty_available / component_qty_needed if component_qty_needed else 0
+
+                available_qty = min(available_qty, kits_possible_with_component)
+
+            product_data = {
+                "product_id": bom.product_id.default_code,
+                "new_stock_qty": float(available_qty)
+            }
+            warehouse_data["products"].append(product_data)
+
+        location_stock_data = [warehouse_data]
+        _logger.info('location_stock_data: %s', location_stock_data)
+        _logger.info('started api calling')
+
+        update_stock = self.update_product_stock_qty_api(location_stock_data)
+        _logger.info("called update_stock Api: %s", update_stock)
+
+        return location_stock_data
+
+    def button_validate1(self):
+        # Call the super method first to ensure the stock picking is validated
+        res = super(StockPicking, self).button_validate()
+
+        # print('husen', res)
+        # Now call the API method to update stock quantity
+
+        # Mohammad Malek 6 November Temporary Turn Off The Live Sync Update For Client Request
+        # 09-12 comment for update live stock on admin end
+
+        if self.state == 'done':
+            self.get_kit_boms_stock_as_json()
+
+        # Return the result of the super call
+        return res
+
+    def get_kit_boms_stock_as_json1(self):
+        # print('Calling get_kit_boms_stock_as_json...')
+        _logger.info('Calling get_kit_boms_stock_as_json...')
+        # Fetch all BOMs with type 'kit' (phantom) for the current company
+        current_company = 1
+        kit_boms = self.env['mrp.bom'].search([
+            ('type', '=', 'phantom'),
+            ('company_id', '=', current_company)
+        ])
+        if not kit_boms:
+            raise ValueError(f"No BOMs with type 'kit' found ")
+
+        # Fetch all warehouses belonging to the current company
+        warehouses = self.env['stock.warehouse'].search([('company_id', '=', current_company)])
+        if not warehouses:
+            raise ValueError(f"No warehouses found ")
+
+        # Initialize the final JSON structure
+        location_stock_data = []
+
+        for warehouse in warehouses:
+            # print(f"Processing warehouse: {warehouse.name}")
+
+            # Get the main stock location for this warehouse
+            location = warehouse.lot_stock_id
+
+            # Initialize data for this warehouse
+            warehouse_data = {
+                "location_name": location.name,
+                "parent_location_name": location.location_id.name,
+                "products": []
+            }
+
+            for bom in kit_boms:
+                # print(f"Processing BOM for kit: {bom.product_tmpl_id.display_name}")
+
+                # Initialize available quantity for this BOM as infinite
+                available_qty = float('inf')
+
+                for line in bom.bom_line_ids:
+                    component = line.product_id
+                    component_qty_needed = line.product_qty
+
+                    # Get the on-hand quantity of the component in this warehouse location
+                    component_qty_available = self.env['stock.quant']._get_available_quantity(component, location)
+
+                    # Calculate how many kits can be made with this component
+                    kits_possible_with_component = component_qty_available / component_qty_needed
+
+                    # Update the available_qty to the minimum of the current value and kits possible
+                    available_qty = min(available_qty, kits_possible_with_component)
+
+                # Add product data to the warehouse's product list
+                product_data = {
+                    # "product_id": bom.product_tmpl_id.display_name,
+                    "product_id": bom.product_id.default_code,
+                    "new_stock_qty": float(available_qty)  # Ensure value is serialized correctly
+                }
+                warehouse_data["products"].append(product_data)
+
+            # Append warehouse data to the final list
+            location_stock_data.append(warehouse_data)
+            # _logger.info('location_stock_data: %s', location_stock_data)
+
+        # Return the JSON structure
+        _logger.info('started calling api update_stock Api')
+        update_stock = self.update_product_stock_qty_api(location_stock_data)
+        # print('update_stock', update_stock)
+        _logger.info('called update_stock Api: %s', update_stock)
         return location_stock_data
 
     def update_stock_qty(self):
@@ -1169,67 +1239,3 @@ class PosOrder(models.Model):
             self.live_stock(locations)
 
         return picking
-
-
-class Bom(models.Model):
-    _inherit = "mrp.bom"
-
-    def action_my_custom(self):
-        for bom in self:
-            _logger.info("BOM product_tmpl_id: %s", bom.product_tmpl_id.default_code)
-
-            warehouses = self.env['stock.warehouse'].search([('name', '!=', 'Sulay WH')])
-            for wh in warehouses:
-                location = wh.lot_stock_id
-                warehouse_data = {
-                    "location_name": location.name,
-                    "products": []
-                }
-                products = self.env['product.product'].with_context(location=location.location_id.id).search([
-                    ('default_code', '=', bom.product_tmpl_id.default_code)
-                ])
-                for product in products:
-                    product_data = {
-                        "product_id": product.default_code or product.id,
-                        "new_stock_qty": float(product.qty_available),
-                    }
-                    warehouse_data["products"].append(product_data)
-
-                location_stock_data = [warehouse_data]
-                _logger.info('location_stock_data: %s', location_stock_data)
-                apistatus = self.env['stock.picking'].update_product_stock_qty_api(location_stock_data)
-                _logger.info("called update_stock Api from button: %s", apistatus)
-
-        return True
-
-    @api.model
-    def create1(self, vals):
-        bom = super(Bom, self).create(vals)
-        _logger.info("BOM product_tmpl_id: %s", bom.product_tmpl_id.default_code)
-
-        warehouses = self.env['stock.warehouse'].search([
-            ('name', '!=', 'Sulay WH')
-        ])
-        for wh in warehouses:
-            location = wh.lot_stock_id  # main stock location for this warehouse
-            warehouse_data = {
-                "location_name": location.name,
-                "products": []
-            }
-            products = self.env['product.product'].with_context(location=location.location_id.id).search([
-                ('default_code', '!=', False)
-            ])
-
-            for product in products:
-                product_data = {
-                    "product_id": product.default_code or product.id,
-                    "new_stock_qty": float(product.qty_available),  # On-hand at this location
-                }
-                warehouse_data["products"].append(product_data)
-
-            location_stock_data = [warehouse_data]
-            _logger.info('location_stock_data: %s', location_stock_data)
-            apistatus = StockPicking.update_product_stock_qty_api(self, location_stock_data)
-            _logger.info("called update_stock Api from stock.scrap: %s", apistatus)
-
-        return bom  # must return the recordset
