@@ -419,16 +419,21 @@ class StockPicking(models.Model):
             warehouse = self.picking_type_id.warehouse_id
             pick_code = self.picking_type_code
             lock_dest = self.location_dest_id
+            source_dest = self.location_id
             _logger.info("Picking Code: %s", self.picking_type_code)
             _logger.info("lock_dest: %s", lock_dest.name)
             stock_location = warehouse.lot_stock_id
 
             _logger.info("Picking Warehouse: %s", warehouse.name)
-            self.get_kit_boms_stock_as_json(warehouse, stock_location, pick_code, lock_dest)
+            self.get_kit_boms_stock_as_json(stock_location, pick_code, lock_dest,source_dest)
 
         return res
 
-    def get_kit_boms_stock_as_json(self, warehouse, stock_location, pick_code, lock_dest):
+    def get_kit_boms_stock_as_json(self, stock_location, pick_code, lock_dest,source_dest):
+
+        _logger.info('location_Source: %s', source_dest)
+        _logger.info('location_Destination: %s', lock_dest)
+
         if pick_code == 'internal':
             warehouse_data = {
                 "location_name": lock_dest.name,
@@ -447,29 +452,48 @@ class StockPicking(models.Model):
             _logger.info('started api calling')
             update_stock = self.update_product_stock_qty_api(location_stock_data)
             _logger.info("called update_stock Api: %s", update_stock)
-
-        warehouse_data = {
-            "location_name": stock_location.name,
-            "products": []
-        }
-
-        products = self.env['product.product'].with_context(location=stock_location.id).search([])
-
-        for product in products:
-            product_data = {
-                "product_id": product.default_code or product.id,
-                "new_stock_qty": float(product.qty_available),  # On-hand at this location
-                # "free_stock_qty": float(product.free_qty),  # Free stock (not reserved)
-                # "virtual_stock_qty": float(product.virtual_available),  # Forecasted stock
+            warehouse_data = {
+                "location_name": source_dest.name,
+                "products": []
             }
-            warehouse_data["products"].append(product_data)
+            products = self.env['product.product'].with_context(location=source_dest.name).search([])
+            for product in products:
+                product_data = {
+                    "product_id": product.default_code or product.id,
+                    "new_stock_qty": float(product.qty_available),  # On-hand at this location
+                }
+                warehouse_data["products"].append(product_data)
 
-        location_stock_data = [warehouse_data]
-        _logger.info('location_stock_data: %s', location_stock_data)
-        _logger.info('started api calling')
+            location_stock_data = [warehouse_data]
+            _logger.info('location_stock_data: %s', location_stock_data)
+            _logger.info('started api calling')
+            update_stock = self.update_product_stock_qty_api(location_stock_data)
+            _logger.info("called update_stock Api: %s", update_stock)
 
-        update_stock = self.update_product_stock_qty_api(location_stock_data)
-        _logger.info("called update_stock Api: %s", update_stock)
+
+        elif pick_code != 'internal':
+            warehouse_data = {
+                "location_name": stock_location.name,
+                "products": []
+            }
+
+            products = self.env['product.product'].with_context(location=stock_location.id).search([])
+
+            for product in products:
+                product_data = {
+                    "product_id": product.default_code or product.id,
+                    "new_stock_qty": float(product.qty_available),  # On-hand at this location
+                    # "free_stock_qty": float(product.free_qty),  # Free stock (not reserved)
+                    # "virtual_stock_qty": float(product.virtual_available),  # Forecasted stock
+                }
+                warehouse_data["products"].append(product_data)
+
+            location_stock_data = [warehouse_data]
+            _logger.info('location_stock_data: %s', location_stock_data)
+            _logger.info('started api calling')
+
+            update_stock = self.update_product_stock_qty_api(location_stock_data)
+            _logger.info("called update_stock Api: %s", update_stock)
 
         return location_stock_data
 
