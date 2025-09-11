@@ -8,10 +8,9 @@ from odoo import models, fields, api
 from odoo.exceptions import UserError
 
 # Define the global URL
-#API_URL = "https://stage-admin.applligentdemo.com/api/v1/odoo/"
+# API_URL = "https://stage-admin.applligentdemo.com/api/v1/odoo/"
 
 SECRETKEY = "sk_e2a2d95a-34d4-4c58-8adf-21d7822f13f0"
-
 
 API_URL = "https://console.ashjar.sa/api/v1/odoo/"
 
@@ -23,48 +22,6 @@ class ReturnPicking(models.Model):
     picking_id = fields.Many2one('stock.picking', string='Picking')
 
     def return_pick(self):
-        return_pickings = self.env['return.picking'].search([])
-        for return_picking2 in return_pickings:
-            picking = return_picking2.picking_id
-
-            if picking.state == 'done':
-                # Step 1: Create wizard with proper context
-                wizard = self.env['stock.return.picking'].with_context(
-                    active_id=picking.id,
-                    active_model='stock.picking',
-                ).create({
-                    'picking_id': picking.id,
-                })
-
-                # Step 2: Add at least one return line (force qty = 1 for demo)
-                for move in picking.move_ids:
-                    if move.quantity > 0:  # 👈 should check quantity_done
-                        self.env['stock.return.picking.line'].create({
-                            'wizard_id': wizard.id,
-                            'product_id': move.product_id.id,
-                            'quantity': 1,  # 👈 force default qty
-                            'move_id': move.id,
-                            'uom_id': move.product_uom.id,
-                        })
-
-                # Step 3: Actually create the return picking (Odoo 18 → returns dict)....
-                action = wizard.action_create_returns()
-                new_picking_id = action.get("res_id")
-                new_picking = self.env['stock.picking'].browse(new_picking_id)
-
-                if new_picking:
-                    new_picking.button_validate()
-                    _logger.info(
-                        "Return picking %s created & validated for original %s",
-                        new_picking.name, picking.name
-                    )
-                else:
-                    _logger.warning("No return picking created for %s", picking.name)
-
-            # cleanup
-            return_picking2.unlink()
-
-    def return_pick2(self):
         return_pickings = self.env['return.picking'].search([])
         for return_picking2 in return_pickings:
             picking_id = return_picking2.picking_id.id
@@ -81,7 +38,7 @@ class ReturnPicking(models.Model):
                     # Add any other necessary fields for the wizard
                 })
             return_picking2.unlink()
-            return_wizard = return_picking.action_create_returns()
+            return_wizard = return_picking._create_returns()
             picking = self.env['stock.picking'].browse(return_wizard[0])
             # Validate the picking object
             if picking:
@@ -225,8 +182,8 @@ class TempPicking(models.Model):
             journal = self.env['account.journal'].search([('name', '=', journal_name)], limit=1)
         else:
             # Default to 'Online Sales' if no match is found
-            # journal = self.env['account.journal'].search([('name', '=', 'Online Sales')], limit=1)
             journal = self.env['account.journal'].search([('name', '=', 'Online Sales')], limit=1)
+            # journal = self.env['account.journal'].search([('name', '=', 'Online Sales')], limit=1)
 
         if not crm_team or not journal:
             raise UserError('CRM Team or Journal "Online Sales" not configured.')
@@ -411,6 +368,92 @@ class StockPicking(models.Model):
     _inherit = 'stock.picking'
 
     def button_validate(self):
+        res = super(StockPicking, self).button_validate()
+
+        if self.state == 'done':
+            # Get the warehouse of this picking
+            warehouse = self.picking_type_id.warehouse_id
+            pick_code = self.picking_type_code
+            lock_dest = self.location_dest_id
+            source_dest = self.location_id
+            _logger.info("Picking Code: %s", self.picking_type_code)
+            _logger.info("lock_dest: %s", lock_dest.name)
+            stock_location = warehouse.lot_stock_id
+
+            _logger.info("Picking Warehouse: %s", warehouse.name)
+            self.get_kit_boms_stock_as_json(stock_location, pick_code, lock_dest, source_dest)
+
+        return res
+
+    def get_kit_boms_stock_as_json(self, stock_location, pick_code, lock_dest, source_dest):
+
+        _logger.info('location_Source: %s', source_dest)
+        _logger.info('location_Destination: %s', lock_dest)
+
+        if pick_code == 'internal':
+            warehouse_data = {
+                "location_name": lock_dest.name,
+                "products": []
+            }
+            products = self.env['product.product'].with_context(location=lock_dest.name).search([])
+            for product in products:
+                product_data = {
+                    "product_id": product.default_code or product.id,
+                    "new_stock_qty": float(product.qty_available),  # On-hand at this location
+                }
+                warehouse_data["products"].append(product_data)
+
+            location_stock_data = [warehouse_data]
+            _logger.info('location_stock_data: %s', location_stock_data)
+            _logger.info('started api calling')
+            update_stock = self.update_product_stock_qty_api(location_stock_data)
+            _logger.info("called update_stock Api: %s", update_stock)
+            warehouse_data = {
+                "location_name": source_dest.name,
+                "products": []
+            }
+            products = self.env['product.product'].with_context(location=source_dest.name).search([])
+            for product in products:
+                product_data = {
+                    "product_id": product.default_code or product.id,
+                    "new_stock_qty": float(product.qty_available),  # On-hand at this location
+                }
+                warehouse_data["products"].append(product_data)
+
+            location_stock_data = [warehouse_data]
+            _logger.info('location_stock_data: %s', location_stock_data)
+            _logger.info('started api calling')
+            update_stock = self.update_product_stock_qty_api(location_stock_data)
+            _logger.info("called update_stock Api: %s", update_stock)
+
+
+        elif pick_code != 'internal':
+            warehouse_data = {
+                "location_name": stock_location.name,
+                "products": []
+            }
+
+            products = self.env['product.product'].with_context(location=stock_location.id).search([])
+
+            for product in products:
+                product_data = {
+                    "product_id": product.default_code or product.id,
+                    "new_stock_qty": float(product.qty_available),  # On-hand at this location
+                    # "free_stock_qty": float(product.free_qty),  # Free stock (not reserved)
+                    # "virtual_stock_qty": float(product.virtual_available),  # Forecasted stock
+                }
+                warehouse_data["products"].append(product_data)
+
+            location_stock_data = [warehouse_data]
+            _logger.info('location_stock_data: %s', location_stock_data)
+            _logger.info('started api calling')
+
+            update_stock = self.update_product_stock_qty_api(location_stock_data)
+            _logger.info("called update_stock Api: %s", update_stock)
+
+        return location_stock_data
+
+    def button_validate1(self):
         # Call the super method first to ensure the stock picking is validated
         res = super(StockPicking, self).button_validate()
 
@@ -426,7 +469,7 @@ class StockPicking(models.Model):
         # Return the result of the super call
         return res
 
-    def get_kit_boms_stock_as_json(self):
+    def get_kit_boms_stock_as_json1(self):
         print('Calling get_kit_boms_stock_as_json...')
         _logger.info('Calling get_kit_boms_stock_as_json...')
         # Fetch all BOMs with type 'kit' (phantom) for the current company
@@ -644,7 +687,7 @@ class CustomerCreator(models.Model):
 
     @api.model
     def create_sale_order_lines(self, sale_order_id, sale_order_lines_data, discount_amount,
-                                charged_with_wallet_amount, delivery_charges49):
+                                charged_with_wallet_amount,delivery_charges49):
         # print('sale_order_lines_data',sale_order_lines_data)
 
         SaleOrderLine = self.env['sale.order.line']
@@ -883,7 +926,7 @@ class CustomerCreator(models.Model):
         # Create sale order lines using the JSON data
         # print('hi i am mohammad')
         self.create_sale_order_lines(new_sale_order.id, order_data["sale_order_lines"], discount_amount,
-                                     charged_with_wallet_amount, delivery_charge)
+                                     charged_with_wallet_amount,delivery_charge)
 
         # create sale order
         new_sale_order.action_confirm()
@@ -969,7 +1012,7 @@ class CustomerCreator(models.Model):
             # Create sale order lines using the JSON data
             print('hi i am mohammads 2')
             self.create_sale_order_lines(new_sale_order.id, order_data["sale_order_lines"], discount_amount,
-                                         charged_with_wallet_amount, delivery_charge)
+                                         charged_with_wallet_amount,delivery_charge)
             update_flag_data = self.update_odoo_flag_api(sale_id)
 
             # Create record for the processed sale order
@@ -977,3 +1020,180 @@ class CustomerCreator(models.Model):
                 'json_data': json.dumps(order_data),
                 'status': 'done'
             })
+
+
+class StockScrap(models.Model):
+    _inherit = "stock.scrap"
+
+    def live_stock(self, location):
+        _logger.info("Start Processing Send Stock")
+        warehouse_data = {
+            "location_name": location.location_id.name,
+            "products": []
+        }
+
+        products = self.env['product.product'].with_context(location=location.location_id.id).search([
+            ('default_code', '!=', False)
+        ])
+
+        for product in products:
+            product_data = {
+                "product_id": product.default_code or product.id,
+                "new_stock_qty": float(product.qty_available),  # On-hand at this location
+            }
+            warehouse_data["products"].append(product_data)
+
+        location_stock_data = [warehouse_data]
+        # _logger.info('location_stock_data: %s', location_stock_data)
+        # _logger.info('started api calling from stock.scrap')
+
+        apistatus = StockPicking.update_product_stock_qty_api(self, location_stock_data)
+        _logger.info("called update_stock Api from stock.scrap: %s", apistatus)
+
+        return True
+
+    def action_validate(self):
+        # Call original logic first
+        res = super(StockScrap, self).action_validate()
+        location = self.location_id
+        self.live_stock(self)
+        return res
+
+
+class StockQuant(models.Model):
+    _inherit = "stock.quant"
+
+    def live_stock(self, locations):
+        # print('locations', location)
+
+        for location in locations:
+            _logger.info("Start Processing Send Stock")
+            _logger.info(location.location_id.name)
+            warehouse_data = {
+                "location_name": location.location_id.name,
+                "products": []
+            }
+
+            products = self.env['product.product'].with_context(location=location.location_id.id).search([
+                ('default_code', '!=', False)
+            ])
+
+            for product in products:
+                # _logger.info(product.default_code)
+                product_data = {
+                    "product_id": product.default_code or product.id,
+                    "new_stock_qty": float(product.qty_available),  # On-hand at this location
+                }
+                warehouse_data["products"].append(product_data)
+
+            location_stock_data = [warehouse_data]
+            # _logger.info('location_stock_data: %s', location_stock_data)
+            # _logger.info('started api calling from stock.scrap')
+            apistatus = StockPicking.update_product_stock_qty_api(self, location_stock_data)
+            _logger.info("called update_stock Api from stock.scrap: %s", apistatus)
+
+        return True
+
+    def action_apply_inventory(self):
+        # Call original logic first
+        res = super(StockQuant, self).action_apply_inventory()
+        locations = self.location_id
+        self.live_stock(self)
+        return res
+
+
+class PosOrder(models.Model):
+    _inherit = "pos.order"
+
+    def live_stock(self, locations):
+        # print('locations', location)
+
+        for location in locations:
+            _logger.info("Start Processing Send Stock")
+            _logger.info(location.name)
+            warehouse_data = {
+                "location_name": location.name,
+                "products": []
+            }
+
+            products = self.env['product.product'].with_context(location=location.location_id.id).search([
+                ('default_code', '!=', False)
+            ])
+
+            for product in products:
+                # _logger.info(product.default_code)
+                product_data = {
+                    "product_id": product.default_code or product.id,
+                    "new_stock_qty": float(product.qty_available),  # On-hand at this location
+                }
+                warehouse_data["products"].append(product_data)
+
+            location_stock_data = [warehouse_data]
+            #_logger.info('location_stock_data: %s', location_stock_data)
+            # _logger.info('started api calling from stock.scrap')
+            apistatus = StockPicking.update_product_stock_qty_api(self, location_stock_data)
+            _logger.info("called update_stock Api from stock.scrap: %s", apistatus)
+
+        return True
+
+    def _create_order_picking(self):
+        picking = super()._create_order_picking()
+
+        if picking:
+            for p in picking:
+                _logger.info("✅ Created Picking %s (state: %s)", p.name, p.state)
+        # else:
+            # _logger.warning(
+            #     "⚠️ No picking created for POS Order %s. Picking Type: %s",
+            #     self.name,
+            #     self.session_id.config_id.picking_type_id.display_name or "Not Set",
+            #     self.session_id.config_id or "Not Set",
+            # )
+
+        # 🔎 Check all linked pickings (in case it was already created before)
+        for p in self.picking_ids:
+            # _logger.info(
+            #     "ℹ️ POS Order %s already has Picking %s (state: %s)",
+            #     self.name,
+            #     p.name,
+            #     p.state,
+            #     p.location_id,
+            # )
+
+            locations = p.location_id
+            self.live_stock(locations)
+
+        return picking
+
+
+class Bom(models.Model):
+    _inherit = "mrp.bom"
+
+    def action_my_custom(self):
+        for bom in self:
+            _logger.info("BOM product_tmpl_id: %s", bom.product_tmpl_id.default_code)
+
+            warehouses = self.env['stock.warehouse'].search([('name', '!=', 'Sulay WH')])
+            for wh in warehouses:
+                location = wh.lot_stock_id
+                warehouse_data = {
+                    "location_name": location.name,
+                    "products": []
+                }
+                products = self.env['product.product'].with_context(location=location.location_id.id).search([
+                    ('default_code', '=', bom.code)
+                ])
+                for product in products:
+                    product_data = {
+                        "product_id": product.default_code or product.id,
+                        "new_stock_qty": float(product.qty_available),
+                    }
+                    warehouse_data["products"].append(product_data)
+
+                location_stock_data = [warehouse_data]
+                _logger.info('location_stock_data: %s', location_stock_data)
+                apistatus = self.env['stock.picking'].update_product_stock_qty_api(location_stock_data)
+                _logger.info("called update_stock Api from button: %s", apistatus)
+
+        return True
+
