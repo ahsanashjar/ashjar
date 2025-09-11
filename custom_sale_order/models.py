@@ -1210,7 +1210,7 @@ class Bom(models.Model):
                     "products": []
                 }
                 products = self.env['product.product'].with_context(location=location.location_id.id).search([
-                    ('default_code', '=', bom.product_tmpl_id.default_code)
+                    ('default_code', '=', bom.code)
                 ])
                 for product in products:
                     product_data = {
