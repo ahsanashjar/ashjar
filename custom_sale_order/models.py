@@ -12,7 +12,8 @@ from odoo.exceptions import UserError
 
 SECRETKEY = "sk_e2a2d95a-34d4-4c58-8adf-21d7822f13f0"
 
-API_URL = "https://console.ashjar.sa/api/v1/odoo/"
+#API_URL = "https://console.ashjar.sa/api/v1/odoo/"
+API_URL = "https://console.sendgifts.sa/api/v1/odoo/"
 
 
 class ReturnPicking(models.Model):
@@ -24,10 +25,53 @@ class ReturnPicking(models.Model):
     def return_pick(self):
         return_pickings = self.env['return.picking'].search([])
         for return_picking2 in return_pickings:
+            picking = return_picking2.picking_id
+
+            if picking.state == 'done':
+                # Step 1: Create wizard with proper context
+                wizard = self.env['stock.return.picking'].with_context(
+                    active_id=picking.id,
+                    active_model='stock.picking',
+                ).create({
+                    'picking_id': picking.id,
+                })
+
+                # Step 2: Add at least one return line (force qty = 1 for demo)
+                for move in picking.move_ids:
+                    if move.quantity > 0:  # 👈 should check quantity_done
+                        self.env['stock.return.picking.line'].create({
+                            'wizard_id': wizard.id,
+                            'product_id': move.product_id.id,
+                            'quantity': 1,  # 👈 force default qty
+                            'move_id': move.id,
+                            'uom_id': move.product_uom.id,
+                        })
+
+                # Step 3: Actually create the return picking (Odoo 18 → returns dict)....
+                action = wizard.action_create_returns()
+                new_picking_id = action.get("res_id")
+                new_picking = self.env['stock.picking'].browse(new_picking_id)
+
+                if new_picking:
+                    new_picking.button_validate()
+                    _logger.info(
+                        "Return picking %s created & validated for original %s",
+                        new_picking.name, picking.name
+                    )
+                else:
+                    _logger.warning("No return picking created for %s", picking.name)
+
+            # cleanup
+            return_picking2.unlink()
+
+    def return_pick2(self):
+        return_pickings = self.env['return.picking'].search([])
+        for return_picking2 in return_pickings:
             picking_id = return_picking2.picking_id.id
             print('picking_id', picking_id)
 
             picking = self.env['stock.picking'].browse(picking_id)
+            _logger.info(' picking ID: %s', picking)
 
             # print('picking.id', picking.id)
 
