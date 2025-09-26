@@ -1,21 +1,43 @@
 <odoo>
-  <data>
-    <record id="mrp_bom_form_view_inherit_add_button" model="ir.ui.view">
-      <field name="name">mrp.bom.form.inherit.add.button</field>
-      <field name="model">mrp.bom</field>
-      <field name="inherit_id" ref="mrp.mrp_bom_form_view"/>  <!-- correct ref -->
-      <field name="arch" type="xml">
-        <xpath expr="//div[@name='button_box']" position="inside">
-          <button name="action_my_custom"
-                  type="object"
-                  class="oe_stat_button"
-                  icon="fa-globe">
-            <div class="o_stat_info">
-              <span class="o_stat_text">Update Stock</span>
-            </div>
-          </button>
-        </xpath>
-      </field>
-    </record>
-  </data>
+    <data>
+        <record id="mrp_bom_form_view_inherit_add_button" model="ir.ui.view">
+            <field name="name">mrp.bom.form.inherit.add.button</field>
+            <field name="model">mrp.bom</field>
+            <field name="inherit_id" ref="mrp.mrp_bom_form_view"/>  <!-- correct ref -->
+            <field name="arch" type="xml">
+                <xpath expr="//div[@name='button_box']" position="inside">
+                    <button name="action_my_custom"
+                            type="object"
+                            class="oe_stat_button"
+                            icon="fa-globe">
+                        <div class="o_stat_info">
+                            <span class="o_stat_text">Update Stock</span>
+                        </div>
+                    </button>
+                </xpath>
+            </field>
+        </record>
+        <!-- Server action that calls your method -->
+        <record id="action_my_custom_bom_mass" model="ir.actions.server">
+            <field name="name">🌐 Update Stock</field>  <!-- just use an emoji or text -->
+            <field name="model_id" ref="mrp.model_mrp_bom"/>
+            <field name="state">code</field>
+            <field name="code">
+                records.action_my_custom()
+            </field>
+            <field name="binding_model_id" ref="mrp.model_mrp_bom"/>
+            <field name="binding_type">action</field>
+        </record>
+        <record id="mrp_bom_list_view_inherit" model="ir.ui.view">
+            <field name="name">mrp.bom.list.inherit</field>
+            <field name="model">mrp.bom</field>
+            <field name="inherit_id" ref="mrp.mrp_bom_tree_view"/>
+            <field name="arch" type="xml">
+                <xpath expr="//list" position="attributes">
+                    <attribute name="js_class">mrp_bom_list</attribute>
+                </xpath>
+            </field>
+        </record>
+
+    </data>
 </odoo>
