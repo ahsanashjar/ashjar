@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<templates xml:space="preserve">
+    <t t-inherit="web.ListView.Buttons" t-inherit-mode="extension">
+        <xpath expr="//div[hasclass('o_list_buttons')]" position="inside">
+            <button
+                t-if="hasSelectedRecords"
+                type="button"
+                class="btn btn-primary me-2"
+                t-on-click="onUpdateStockClick">
+                <i class="fa fa-globe"></i>
+                Update Stock
+            </button>
+        </xpath>
+    </t>
+</templates>
+
+
+<!--<templates xml:space="preserve">-->
+<!--    <t t-inherit="web.ListView.Buttons" t-inherit-mode="extension" owl="1">-->
+<!--        <xpath expr="//div[hasclass('o_list_buttons')]" position="inside">-->
+<!--           <button-->
+<!--    type="button"-->
+<!--    class="btn btn-primary oe_stat_button"-->
+<!--    t-on-click="onUpdateStockClick">-->
+<!--    <i class="fa fa-globe"/>  &lt;!&ndash; explicitly add the icon here &ndash;&gt;-->
+<!--    <span class="o_stat_text">  Update Stock</span>-->
+<!--</button>-->
+
+<!--        </xpath>-->
+<!--    </t>-->
+<!--</templates>-->
+<!--<?xml version="1.0" encoding="UTF-8"?>-->
