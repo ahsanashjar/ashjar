@@ -1200,7 +1200,7 @@ class Bom(models.Model):
 
     def action_my_custom(self):
         for bom in self:
-            _logger.info("BOM product_tmpl_id: %s", bom.product_tmpl_id.default_code)
+            _logger.info("BOM product_tmpl_id: %s", bom.code)
 
             warehouses = self.env['stock.warehouse'].search([('name', '!=', 'Sulay WH')])
             for wh in warehouses:
@@ -1226,34 +1226,3 @@ class Bom(models.Model):
 
         return True
 
-    @api.model
-    def create1(self, vals):
-        bom = super(Bom, self).create(vals)
-        _logger.info("BOM product_tmpl_id: %s", bom.product_tmpl_id.default_code)
-
-        warehouses = self.env['stock.warehouse'].search([
-            ('name', '!=', 'Sulay WH')
-        ])
-        for wh in warehouses:
-            location = wh.lot_stock_id  # main stock location for this warehouse
-            warehouse_data = {
-                "location_name": location.name,
-                "products": []
-            }
-            products = self.env['product.product'].with_context(location=location.location_id.id).search([
-                ('default_code', '!=', False)
-            ])
-
-            for product in products:
-                product_data = {
-                    "product_id": product.default_code or product.id,
-                    "new_stock_qty": float(product.qty_available),  # On-hand at this location
-                }
-                warehouse_data["products"].append(product_data)
-
-            location_stock_data = [warehouse_data]
-            _logger.info('location_stock_data: %s', location_stock_data)
-            apistatus = StockPicking.update_product_stock_qty_api(self, location_stock_data)
-            _logger.info("called update_stock Api from stock.scrap: %s", apistatus)
-
-        return bom  # must return the recordset
