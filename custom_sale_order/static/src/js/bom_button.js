@@ -1,5 +1,4 @@
 /** @odoo-module **/
-/** @odoo-module **/
 
 import { ListController } from "@web/views/list/list_controller";
 import { registry } from "@web/core/registry";
@@ -11,12 +10,14 @@ export class MrpBomListController extends ListController {
         super.setup();
         this.actionService = useService("action");
         this.notification = useService("notification");
-
     }
-
 
     get hasSelectedRecords() {
         return this.model.root.selection.length > 0;
+    }
+
+    get isMrpBomModel() {
+        return this.model.root.resModel === 'mrp.bom';
     }
 
     async onUpdateStockClick() {
