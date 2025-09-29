@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<templates xml:space="preserve">
+    <t t-inherit="web.ListView.Buttons" t-inherit-mode="extension">
+        <!-- Add button only for MRP BOM list view -->
+        <xpath expr="//div[hasclass('o_list_buttons')]" position="inside">
+            <button
+                t-if="hasSelectedRecords and isMrpBomModel"
+                type="button"
+                class="btn btn-primary me-2"
+                t-on-click="onUpdateStockClick">
+                <i class="fa fa-globe"></i>
+                Update Stock
+            </button>
+        </xpath>
+    </t>
+</templates>

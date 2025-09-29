@@ -1215,7 +1215,7 @@ class Bom(models.Model):
 
     def action_my_custom(self):
         for bom in self:
-            _logger.info("BOM product_tmpl_id: %s", bom.product_tmpl_id.default_code)
+            _logger.info("BOM product_tmpl_id: %s", bom.code)
 
             warehouses = self.env['stock.warehouse'].search([('name', '!=', 'Sulay WH')])
             for wh in warehouses:
