@@ -186,6 +186,11 @@ class TempPicking(models.Model):
                     if not self._check_existing_invoices(sale_order):
                         self._process_sale_order_and_invoice(sale_order, temp_picking)
                     else:
+                        inv = env['account.move'].browse(810021)
+                        _logger.info(inv.get_base_url())
+                        _logger.info(inv._get_share_url())
+                        _logger.info(inv._portal_ensure_token())
+
                         _logger.info('Invoice already exists for Sale Order: %s. Skipping invoice creation.',
                                      sale_order.name)
                         temp_picking.write({'invoice_processed': True})
@@ -241,17 +246,7 @@ class TempPicking(models.Model):
                 invoice.action_post()
                 _logger.info('Invoice posted: %s', invoice.id)
                 self.register_and_confirm_payment(invoice)
-                # Construct the share link
-                base_url = invoice.get_base_url()
-                share_url = invoice._get_share_url(redirect=True)
-                _logger.info('Invoice Share Link: %s', base_url)
-                _logger.info('Invoice Share Link: %s', share_url)
-
-                # Return the full share link
-
-                share_link = self.env['account.move'].get_invoice_share_link(810021)
-                _logger.info('Invoice Share Link: %s', share_link)
-                return False
+                share_link = self.env['account.move'].get_invoice_share_link(invoice.id)
                 if self.attach_single_sale_invoice(temp_picking.ecom_sale_id, share_link):
                     _logger.info('Invoice Share Link: %s', share_link)
                 else:
