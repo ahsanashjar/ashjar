@@ -241,7 +241,17 @@ class TempPicking(models.Model):
                 invoice.action_post()
                 _logger.info('Invoice posted: %s', invoice.id)
                 self.register_and_confirm_payment(invoice)
-                share_link = self.env['account.move'].get_invoice_share_link(invoice.id)
+                # Construct the share link
+                base_url = invoice.get_base_url()
+                share_url = invoice._get_share_url(redirect=True)
+                _logger.info('Invoice Share Link: %s', base_url)
+                _logger.info('Invoice Share Link: %s', share_url)
+
+                # Return the full share link
+
+                share_link = self.env['account.move'].get_invoice_share_link(810021)
+                _logger.info('Invoice Share Link: %s', share_link)
+                return False
                 if self.attach_single_sale_invoice(temp_picking.ecom_sale_id, share_link):
                     _logger.info('Invoice Share Link: %s', share_link)
                 else:
