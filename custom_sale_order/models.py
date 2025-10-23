@@ -192,7 +192,7 @@ class TempPicking(models.Model):
                                 self.env['ir.config_parameter'].sudo().get_param('web.base.url')
                                 or invoice.get_base_url()
                         )
-                        _logger.info(get_base_url)
+                        _logger.info(base_url)
                         _logger.info(inv.get_base_url())
                         _logger.info(inv._get_share_url())
                         _logger.info(inv._portal_ensure_token())
