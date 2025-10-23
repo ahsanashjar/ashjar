@@ -12,7 +12,7 @@ from odoo.exceptions import UserError
 
 SECRETKEY = "sk_e2a2d95a-34d4-4c58-8adf-21d7822f13f0"
 
-#API_URL = "https://console.ashjar.sa/api/v1/odoo/"
+# API_URL = "https://console.ashjar.sa/api/v1/odoo/"
 API_URL = "https://console.sendgifts.sa/api/v1/odoo/"
 
 
@@ -189,6 +189,11 @@ class TempPicking(models.Model):
                         _logger.info('Invoice already exists for Sale Order: %s. Skipping invoice creation.',
                                      sale_order.name)
                         temp_picking.write({'invoice_processed': True})
+                        share_link = self.env['account.move'].get_invoice_share_link(808949)
+                        if self.attach_single_sale_invoice(temp_picking.ecom_sale_id, share_link):
+                            _logger.info('Invoice Share Link: %s', share_link)
+                        else:
+                            _logger.warning('Share Link not created for Invoice ID: %s', invoice.id)
 
                 # Unlink record if both delivery and invoice are validated
                 if temp_picking.picking_validated and temp_picking.invoice_processed:
@@ -731,7 +736,7 @@ class CustomerCreator(models.Model):
 
     @api.model
     def create_sale_order_lines(self, sale_order_id, sale_order_lines_data, discount_amount,
-                                charged_with_wallet_amount,delivery_charges49):
+                                charged_with_wallet_amount, delivery_charges49):
         # print('sale_order_lines_data',sale_order_lines_data)
 
         SaleOrderLine = self.env['sale.order.line']
@@ -970,7 +975,7 @@ class CustomerCreator(models.Model):
         # Create sale order lines using the JSON data
         # print('hi i am mohammad')
         self.create_sale_order_lines(new_sale_order.id, order_data["sale_order_lines"], discount_amount,
-                                     charged_with_wallet_amount,delivery_charge)
+                                     charged_with_wallet_amount, delivery_charge)
 
         # create sale order
         new_sale_order.action_confirm()
@@ -1056,7 +1061,7 @@ class CustomerCreator(models.Model):
             # Create sale order lines using the JSON data
             print('hi i am mohammads 2')
             self.create_sale_order_lines(new_sale_order.id, order_data["sale_order_lines"], discount_amount,
-                                         charged_with_wallet_amount,delivery_charge)
+                                         charged_with_wallet_amount, delivery_charge)
             update_flag_data = self.update_odoo_flag_api(sale_id)
 
             # Create record for the processed sale order
@@ -1173,7 +1178,7 @@ class PosOrder(models.Model):
                 warehouse_data["products"].append(product_data)
 
             location_stock_data = [warehouse_data]
-            #_logger.info('location_stock_data: %s', location_stock_data)
+            # _logger.info('location_stock_data: %s', location_stock_data)
             # _logger.info('started api calling from stock.scrap')
             apistatus = StockPicking.update_product_stock_qty_api(self, location_stock_data)
             _logger.info("called update_stock Api from stock.scrap: %s", apistatus)
@@ -1187,12 +1192,12 @@ class PosOrder(models.Model):
             for p in picking:
                 _logger.info("✅ Created Picking %s (state: %s)", p.name, p.state)
         # else:
-            # _logger.warning(
-            #     "⚠️ No picking created for POS Order %s. Picking Type: %s",
-            #     self.name,
-            #     self.session_id.config_id.picking_type_id.display_name or "Not Set",
-            #     self.session_id.config_id or "Not Set",
-            # )
+        # _logger.warning(
+        #     "⚠️ No picking created for POS Order %s. Picking Type: %s",
+        #     self.name,
+        #     self.session_id.config_id.picking_type_id.display_name or "Not Set",
+        #     self.session_id.config_id or "Not Set",
+        # )
 
         # 🔎 Check all linked pickings (in case it was already created before)
         for p in self.picking_ids:
@@ -1240,4 +1245,3 @@ class Bom(models.Model):
                 _logger.info("called update_stock Api from button: %s", apistatus)
 
         return True
-
