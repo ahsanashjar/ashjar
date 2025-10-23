@@ -14,7 +14,10 @@ SECRETKEY = "sk_e2a2d95a-34d4-4c58-8adf-21d7822f13f0"
 
 #API_URL = "https://console.ashjar.sa/api/v1/odoo/"
 API_URL = "https://console.sendgifts.sa/api/v1/odoo/"
-API_URL1 = "ashjar.odoo.com"
+base_url = (
+        self.env['ir.config_parameter'].sudo().get_param('web.base.url')
+        or invoice.get_base_url()
+)
 
 
 class ReturnPicking(models.Model):
@@ -187,16 +190,6 @@ class TempPicking(models.Model):
                     if not self._check_existing_invoices(sale_order):
                         self._process_sale_order_and_invoice(sale_order, temp_picking)
                     else:
-                        inv = self.env['account.move'].browse(810021)
-                        base_url = (
-                                self.env['ir.config_parameter'].sudo().get_param('web.base.url')
-                                or invoice.get_base_url()
-                        )
-                        _logger.info(base_url)
-                        _logger.info(inv.get_base_url())
-                        _logger.info(inv._get_share_url())
-                        _logger.info(inv._portal_ensure_token())
-
                         _logger.info('Invoice already exists for Sale Order: %s. Skipping invoice creation.',
                                      sale_order.name)
                         temp_picking.write({'invoice_processed': True})
@@ -412,7 +405,7 @@ class CustomModule(models.Model):
             return None  # Return None if the invoice doesn't exist or is still a draft
 
         # Construct the share link
-        base_url = invoice.get_base_url()
+        #base_url = invoice.get_base_url()
         share_url = invoice._get_share_url(redirect=True)
 
         # Return the full share link
