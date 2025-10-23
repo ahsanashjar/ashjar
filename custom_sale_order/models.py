@@ -405,7 +405,7 @@ class CustomModule(models.Model):
             return None  # Return None if the invoice doesn't exist or is still a draft
 
         # Construct the share link
-        #base_url = invoice.get_base_url()
+        base_url = 'https://ashjar.odoo.com'
         share_url = invoice._get_share_url(redirect=True)
 
         # Return the full share link
