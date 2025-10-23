@@ -389,7 +389,7 @@ class TempPicking(models.Model):
             "sale_order_id": sale_order_id,
             "invoice_attachement": invoice_attachement
         }
-        _logger.info("body.", body)
+        _logger.info(body)
         response = requests.post(url, json=body)
         if response.status_code == 200:
             return response.json()
@@ -404,6 +404,7 @@ class CustomModule(models.Model):
     def get_invoice_share_link(self, invoice_id):
         """Generate the share link for an invoice using its ID."""
         invoice = self.env['account.move'].browse(invoice_id)
+        _logger.info('invoice', invoice)
         if not invoice or invoice.state == 'draft':
             return None  # Return None if the invoice doesn't exist or is still a draft
 
