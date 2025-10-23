@@ -276,6 +276,7 @@ class TempPicking(models.Model):
                 _logger.info('Invoice posted: %s', invoice.id)
                 self.register_and_confirm_payment(invoice)
                 share_link = self.env['account.move'].get_invoice_share_link(invoice.id)
+                _logger.info('Invoice Share Link: %s', share_link)
                 if self.attach_single_sale_invoice(temp_picking.ecom_sale_id, share_link):
                     _logger.info('Invoice Share Link: %s', share_link)
                 else:
