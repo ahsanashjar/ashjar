@@ -376,7 +376,6 @@ class TempPicking(models.Model):
 
         # Api 6
         # Mohammad
-        API_URL = "https://ashjar.odoo.com/api/v1/odoo/"
         url = API_URL + "attach_single_sale_invoice"
         body = {
             "secret_key": SECRETKEY,
