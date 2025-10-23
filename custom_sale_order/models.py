@@ -108,6 +108,8 @@ class TempPicking(models.Model):
     def _validate_temp_pickings(self):
 
         temp_pickings = self.env['temp.picking'].search([])
+        temp_pickings = self.env['temp.picking'].search([], limit=10)
+
         for temp_picking in temp_pickings:
             try:
                 picking = temp_picking.picking_id
