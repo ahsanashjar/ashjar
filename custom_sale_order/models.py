@@ -408,6 +408,8 @@ class CustomModule(models.Model):
         # Construct the share link
         base_url = invoice.get_base_url()
         share_url = invoice._get_share_url(redirect=True)
+        _logger.info('base_url',base_url)
+        _logger.info('share_url', share_url)
 
         # Return the full share link
         return f"{base_url}{share_url}"
