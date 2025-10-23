@@ -14,6 +14,7 @@ SECRETKEY = "sk_e2a2d95a-34d4-4c58-8adf-21d7822f13f0"
 
 #API_URL = "https://console.ashjar.sa/api/v1/odoo/"
 API_URL = "https://console.sendgifts.sa/api/v1/odoo/"
+API_URL1 = "ashjar.odoo.com"
 
 
 class ReturnPicking(models.Model):
@@ -187,6 +188,11 @@ class TempPicking(models.Model):
                         self._process_sale_order_and_invoice(sale_order, temp_picking)
                     else:
                         inv = self.env['account.move'].browse(810021)
+                        base_url = (
+                                self.env['ir.config_parameter'].sudo().get_param('web.base.url')
+                                or invoice.get_base_url()
+                        )
+                        _logger.info(get_base_url)
                         _logger.info(inv.get_base_url())
                         _logger.info(inv._get_share_url())
                         _logger.info(inv._portal_ensure_token())
