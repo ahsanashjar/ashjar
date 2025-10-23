@@ -186,7 +186,7 @@ class TempPicking(models.Model):
                     if not self._check_existing_invoices(sale_order):
                         self._process_sale_order_and_invoice(sale_order, temp_picking)
                     else:
-                        inv = env['account.move'].browse(810021)
+                        inv = self.env['account.move'].browse(810021)
                         _logger.info(inv.get_base_url())
                         _logger.info(inv._get_share_url())
                         _logger.info(inv._portal_ensure_token())
