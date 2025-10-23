@@ -14,10 +14,10 @@ SECRETKEY = "sk_e2a2d95a-34d4-4c58-8adf-21d7822f13f0"
 
 #API_URL = "https://console.ashjar.sa/api/v1/odoo/"
 API_URL = "https://console.sendgifts.sa/api/v1/odoo/"
-base_url = (
-        self.env['ir.config_parameter'].sudo().get_param('web.base.url')
-        or invoice.get_base_url()
-)
+# base_url = (
+#         self.env['ir.config_parameter'].sudo().get_param('web.base.url')
+#         or invoice.get_base_url()
+# )
 
 
 class ReturnPicking(models.Model):
