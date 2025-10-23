@@ -108,8 +108,6 @@ class TempPicking(models.Model):
     def _validate_temp_pickings(self):
 
         temp_pickings = self.env['temp.picking'].search([])
-        #temp_pickings = self.env['temp.picking'].search([], limit=10)
-
         for temp_picking in temp_pickings:
             try:
                 picking = temp_picking.picking_id
@@ -427,7 +425,7 @@ class StockPicking(models.Model):
             stock_location = warehouse.lot_stock_id
 
             _logger.info("Picking Warehouse: %s", warehouse.name)
-            #self.get_kit_boms_stock_as_json(stock_location, pick_code, lock_dest, source_dest)
+            self.get_kit_boms_stock_as_json(stock_location, pick_code, lock_dest, source_dest)
 
         return res
 
