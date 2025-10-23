@@ -373,7 +373,7 @@ class TempPicking(models.Model):
         _logger.info('Payment registered and confirmed for Invoice: %s', invoice.id)
 
     def attach_single_sale_invoice(self, sale_order_id, invoice_attachement):
-
+        _logger.info("invoice_attachement.", invoice_attachement)
         # Api 6
         # Mohammad
         url = API_URL + "attach_single_sale_invoice"
@@ -382,7 +382,7 @@ class TempPicking(models.Model):
             "sale_order_id": sale_order_id,
             "invoice_attachement": invoice_attachement
         }
-
+        _logger.info("body.", body)
         response = requests.post(url, json=body)
         if response.status_code == 200:
             return response.json()
