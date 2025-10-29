@@ -962,6 +962,7 @@ class CustomerCreator(models.Model):
 
         # Create sale order
         SaleOrder = self.env['sale.order']
+        SaleOrder = self.env['sale.order'].sudo().with_context(from_webhook=True)
         new_sale_order = SaleOrder.create({
             'partner_id': existing_customer.id,
             'company_id': 1,
