@@ -962,6 +962,7 @@ class CustomerCreator(models.Model):
 
         # Create sale order
         SaleOrder = self.env['sale.order'].sudo()
+        _logger.info(SaleOrder)
         new_sale_order = SaleOrder.create({
             'partner_id': existing_customer.id,
             'company_id': 1,
@@ -973,6 +974,7 @@ class CustomerCreator(models.Model):
             'client_order_ref': concatenated_value,
             # 'user_id': salesperson_id.id  # Set the salesperson
         })
+        _logger.info(new_sale_order)
 
         if not new_sale_order:
             raise UserError("Sale Order could not be created for customer: %s" % existing_customer.name)
