@@ -885,6 +885,8 @@ class CustomerCreator(models.Model):
     # this is function for call last sale order creating in system and also sale order log view
     @api.model
     def create_sale_orders_from_data(self, active_id):
+        self = self.sudo()
+
         print('active_id', active_id)
         _logger.info("active_id")
         _logger.info(active_id)
