@@ -738,7 +738,7 @@ class CustomerCreator(models.Model):
                                 charged_with_wallet_amount,delivery_charges49):
         # print('sale_order_lines_data',sale_order_lines_data)
 
-        SaleOrderLine = self.env['sale.order.line']
+        SaleOrderLine = self.env['sale.order.line'].sudo()
         discount_product_name = "Discount"  # Replace with your actual discount product name
         discount_wallet = "Wallet Discount"  # Replace with your actual discount product name
         delivery_charge = "Standard Delivery Charges"  # Replace with your actual discount product name
@@ -961,8 +961,7 @@ class CustomerCreator(models.Model):
             raise UserError("Customer could not be created or found for order data: %s" % order_data)
 
         # Create sale order
-        SaleOrder = self.env['sale.order']
-        SaleOrder = self.env['sale.order'].sudo().with_context(from_webhook=True)
+        SaleOrder = self.env['sale.order'].sudo()
         new_sale_order = SaleOrder.create({
             'partner_id': existing_customer.id,
             'company_id': 1,
