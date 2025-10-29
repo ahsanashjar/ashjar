@@ -738,7 +738,7 @@ class CustomerCreator(models.Model):
                                 charged_with_wallet_amount,delivery_charges49):
         # print('sale_order_lines_data',sale_order_lines_data)
 
-        SaleOrderLine = self.env['sale.order.line'].sudo()
+        SaleOrderLine = self.env['sale.order.line']
         discount_product_name = "Discount"  # Replace with your actual discount product name
         discount_wallet = "Wallet Discount"  # Replace with your actual discount product name
         delivery_charge = "Standard Delivery Charges"  # Replace with your actual discount product name
@@ -885,15 +885,10 @@ class CustomerCreator(models.Model):
     # this is function for call last sale order creating in system and also sale order log view
     @api.model
     def create_sale_orders_from_data(self, active_id):
-        self = self.sudo()
-
         print('active_id', active_id)
-        _logger.info("active_id")
-        _logger.info(active_id)
+
         # Fetch sales data from the API
         sales_data = self.fetch_sales_data_from_api(active_id)
-        _logger.info("sales_data")
-        _logger.info(sales_data)
         # print('sales_data', sales_data)
 
         # Ensure that sales_data contains data
@@ -902,8 +897,6 @@ class CustomerCreator(models.Model):
 
         # Extract the order data
         order_data = sales_data["data"]
-        _logger.info("order_data")
-        _logger.info(order_data)
 
         # Ensure that order_data contains data
         if not order_data:
@@ -911,8 +904,7 @@ class CustomerCreator(models.Model):
 
         # Extract the first order data
         order_data = order_data[0]
-        _logger.info("order_data")
-        _logger.info(order_data)
+
         commitment_date = order_data["sale_order"]["order_date"]
         payment_method = order_data["sale_order"]["payment_method"]
         order_id = order_data["sale_order"]["payment_id"]
@@ -963,8 +955,7 @@ class CustomerCreator(models.Model):
             raise UserError("Customer could not be created or found for order data: %s" % order_data)
 
         # Create sale order
-        SaleOrder = self.env['sale.order'].sudo()
-        _logger.info(SaleOrder)
+        SaleOrder = self.env['sale.order']
         new_sale_order = SaleOrder.create({
             'partner_id': existing_customer.id,
             'company_id': 1,
@@ -976,7 +967,6 @@ class CustomerCreator(models.Model):
             'client_order_ref': concatenated_value,
             # 'user_id': salesperson_id.id  # Set the salesperson
         })
-        _logger.info(new_sale_order)
 
         if not new_sale_order:
             raise UserError("Sale Order could not be created for customer: %s" % existing_customer.name)
