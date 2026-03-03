@@ -1179,8 +1179,8 @@ class PosOrder(models.Model):
             location_stock_data = [warehouse_data]
             #_logger.info('location_stock_data: %s', location_stock_data)
             # _logger.info('started api calling from stock.scrap')
-            apistatus = StockPicking.update_product_stock_qty_api(self, location_stock_data)
-            _logger.info("called update_stock Api from stock.scrap: %s", apistatus)
+            #apistatus = StockPicking.update_product_stock_qty_api(self, location_stock_data)
+            #_logger.info("called update_stock Api from stock.scrap: %s", apistatus)
 
         return True
 
