@@ -608,17 +608,17 @@ class StockPicking(models.Model):
         return True
 		#Umar - commented the full stock update code
 		# url = API_URL + "update_product_stock_qty"
-        #url = API_URL + "update_product_stock_qty_wrt_dp"
-        #body = {
-        #    "secret_key": SECRETKEY,
-        #    "stock_data": stock_data
-        #}
+        url = API_URL + "update_product_stock_qty_wrt_dp"
+        body = {
+           "secret_key": SECRETKEY,
+           "stock_data": stock_data
+        }
 
-        #response = requests.post(url, json=body)
-        #if response.status_code == 200:
-        #    return response.json()
-        #else:
-        #    raise UserError(f"Failed to update product stock qty: {response.status_code} {response.text}")
+        response = requests.post(url, json=body)
+        if response.status_code == 200:
+           return response.json()
+        else:
+           raise UserError(f"Failed to update product stock qty: {response.status_code} {response.text}")
 
 
 class ProductTemplate(models.Model):
@@ -1179,11 +1179,11 @@ class PosOrder(models.Model):
                 warehouse_data["products"].append(product_data)
 
             location_stock_data = [warehouse_data]
-            #_logger.info('location_stock_data: %s', location_stock_data)
-            # _logger.info('started api calling from stock.scrap')
+            _logger.info('location_stock_data: %s', location_stock_data)
+            _logger.info('started api calling from stock.scrap')
 			#Umar - Changes done to bypass POS order api calling
-            #apistatus = StockPicking.update_product_stock_qty_api(self, location_stock_data)
-            #_logger.info("called update_stock Api from stock.scrap: %s", apistatus)
+            apistatus = StockPicking.update_product_stock_qty_api(self, location_stock_data)
+            _logger.info("called update_stock Api from stock.scrap: %s", apistatus)
 
         return True
 
